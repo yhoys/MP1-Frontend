@@ -4,7 +4,7 @@
       "id": "1",
       "nombres": "Carlos",
       "apellidos": "García Pérez",
-      "tipoDocumento": "CC",
+      "tipoDocumento": "Cédula de Ciudadanía",
       "numeroDocumento": "1234567890",
       "genero": "Masculino",
       "email": "carlos.garcia@example.com",
@@ -12,8 +12,7 @@
       "rol": "Super Administrador",
       "fechaNacimiento": "1990-05-15",
       "estado": true,
-      "createdAt": "2025-11-20T10:00:00.000Z",
-      "updatedAt": "2025-11-20T10:00:00.000Z"
+      "updatedAt": "2025-11-20T16:45:09.226Z"
     },
     {
       "id": "249b",
@@ -28,6 +27,23 @@
       "fechaNacimiento": "1995-04-12",
       "estado": true,
       "updatedAt": "2025-11-20T16:31:07.700Z"
+    },
+    {
+      "id": "8a10",
+      "nombres": "Carlos",
+      "apellidos": "Sanchéz",
+      "tipoDocumento": "Pasaporte",
+      "numeroDocumento": "BA123456",
+      "genero": "Masculino",
+      "email": "carlos.sanchez@email.com",
+      "telefono": "3001234567",
+      "rol": "Administrador",
+      "fechaNacimiento": "2000-11-11",
+      "foto": "",
+      "direccion": "",
+      "estado": true,
+      "createdAt": "2025-11-20T16:46:37.929Z",
+      "updatedAt": "2025-11-20T16:46:37.929Z"
     }
   ],
   "roles": [
@@ -75,6 +91,16 @@
       "ultimoUsuario": "user",
       "ultimaAccion": "2025-11-20T16:34:56.160Z",
       "id": "3"
+    },
+    {
+      "id": "afa9",
+      "codigo": "PE",
+      "nombre": "Permiso de Estancia",
+      "estado": true,
+      "createdAt": "2025-11-20T16:45:23.211Z",
+      "updatedAt": "2025-11-20T16:45:23.211Z",
+      "ultimoUsuario": "user",
+      "ultimaAccion": "2025-11-20T16:45:23.211Z"
     }
   ]
 }

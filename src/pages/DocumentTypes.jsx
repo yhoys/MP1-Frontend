@@ -21,29 +21,54 @@ import {
   IconButton,
   Typography,
   Tooltip,
+  Tabs,
+  Tab,
+  Alert,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import RestoreIcon from "@mui/icons-material/Restore";
 import { useAuth } from "../auth/AuthProvider";
 
 const API = "http://localhost:3001";
 
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
 function DocumentTypes() {
   const { user } = useAuth();
-  const [tipos, setTipos] = useState([]);
+  const [allTipos, setAllTipos] = useState([]);
   const [openModal, setOpenModal] = useState(false);
+  const [openDuplicateDialog, setOpenDuplicateDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [duplicateData, setDuplicateData] = useState(null);
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
   });
 
+  const tipos = allTipos.filter((t) => t.estado !== false);
+  const tiposInactivos = allTipos.filter((t) => t.estado === false);
+
   useEffect(() => {
     fetch(`${API}/documentTypes`)
       .then((r) => r.json())
-      .then((data) => setTipos((data || []).filter((t) => t.estado !== false)))
-      .catch(() => setTipos([]));
+      .then((data) => setAllTipos(data || []))
+      .catch(() => setAllTipos([]));
   }, []);
 
   const handleOpenModal = (tipo = null) => {
@@ -62,10 +87,27 @@ function DocumentTypes() {
     setEditingId(null);
   };
 
+  const checkDuplicate = (codigo) => {
+    return allTipos.find(
+      (t) =>
+        t.estado === false && t.codigo.toLowerCase() === codigo.toLowerCase()
+    );
+  };
+
   const handleSave = async () => {
     if (!formData.codigo || !formData.nombre) {
       alert("El código y nombre del tipo de documento son requeridos");
       return;
+    }
+
+    // Si es crear, verificar duplicados
+    if (!editingId) {
+      const duplicate = checkDuplicate(formData.codigo);
+      if (duplicate) {
+        setDuplicateData(duplicate);
+        setOpenDuplicateDialog(true);
+        return;
+      }
     }
 
     const now = new Date().toISOString();
@@ -102,20 +144,60 @@ function DocumentTypes() {
         });
       }
 
-      // Log auditoria
       await fetch(`${API}/auditLogs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(auditEntry),
-      }).catch(() => {}); // Si falla, continúa sin error
+      }).catch(() => {});
 
       setOpenModal(false);
       const res = await fetch(`${API}/documentTypes`);
-      const data = await res.json();
-      setTipos((data || []).filter((t) => t.estado !== false));
-    } catch (error) {
+      setAllTipos(await res.json());
+    } catch {
       alert("Error al guardar tipo de documento");
-      console.error(error);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!duplicateData) return;
+    try {
+      const now = new Date().toISOString();
+      const payload = {
+        ...duplicateData,
+        ...formData,
+        estado: true,
+        updatedAt: now,
+        ultimoUsuario: user?.name || "Sistema",
+        ultimaAccion: now,
+      };
+
+      const auditEntry = {
+        tipo: "DocumentType",
+        accion: "Reactivado",
+        usuario: user?.name || "Sistema",
+        fechaHora: now,
+        descripcion: `Reactivado: ${formData.nombre} (${formData.codigo})`,
+      };
+
+      await fetch(`${API}/documentTypes/${duplicateData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      await fetch(`${API}/auditLogs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(auditEntry),
+      }).catch(() => {});
+
+      setOpenDuplicateDialog(false);
+      setOpenModal(false);
+      setDuplicateData(null);
+      const res = await fetch(`${API}/documentTypes`);
+      setAllTipos(await res.json());
+    } catch {
+      alert("Error al reactivar tipo de documento");
     }
   };
 
@@ -146,17 +228,55 @@ function DocumentTypes() {
           }),
         });
 
-        // Log auditoria
         await fetch(`${API}/auditLogs`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(auditEntry),
         }).catch(() => {});
 
-        setTipos(tipos.filter((t) => t.id !== id));
-      } catch (error) {
+        const res = await fetch(`${API}/documentTypes`);
+        setAllTipos(await res.json());
+      } catch {
         alert("Error al eliminar tipo de documento");
-        console.error(error);
+      }
+    }
+  };
+
+  const handleRestoreInactive = async (id) => {
+    if (window.confirm("¿Deseas reactivar este tipo de documento?")) {
+      try {
+        const tipo = tiposInactivos.find((t) => t.id === id);
+        const now = new Date().toISOString();
+
+        const auditEntry = {
+          tipo: "DocumentType",
+          accion: "Reactivado",
+          usuario: user?.name || "Sistema",
+          fechaHora: now,
+          descripcion: `Reactivado: ${tipo.nombre} (${tipo.codigo})`,
+        };
+
+        await fetch(`${API}/documentTypes/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...tipo,
+            estado: true,
+            ultimoUsuario: user?.name || "Sistema",
+            ultimaAccion: now,
+          }),
+        });
+
+        await fetch(`${API}/auditLogs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(auditEntry),
+        }).catch(() => {});
+
+        const res = await fetch(`${API}/documentTypes`);
+        setAllTipos(await res.json());
+      } catch {
+        alert("Error al reactivar tipo de documento");
       }
     }
   };
@@ -186,96 +306,180 @@ function DocumentTypes() {
           >
             Gestión de Tipos de Documento
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-            sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            }}
-          >
-            Nuevo Tipo
-          </Button>
+          {tabValue === 0 && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              }}
+            >
+              Nuevo Tipo
+            </Button>
+          )}
         </Box>
 
-        <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
-          <Table>
-            <TableHead sx={{ bgcolor: "#f5f7fa" }}>
-              <TableRow>
-                <TableCell>
-                  <strong>Código</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Nombre</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Última Actualización</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Usuario</strong>
-                </TableCell>
-                <TableCell align="center">
-                  <strong>Acciones</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {tipos.length === 0 ? (
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={(e, newValue) => setTabValue(newValue)}
+            aria-label="document type tabs"
+          >
+            <Tab label={`Activos (${tipos.length})`} id="tab-0" />
+            <Tab label={`Inactivos (${tiposInactivos.length})`} id="tab-1" />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
+            <Table>
+              <TableHead sx={{ bgcolor: "#f5f7fa" }}>
                 <TableRow>
-                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                    No hay tipos de documento registrados
+                  <TableCell>
+                    <strong>Código</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Nombre</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Última Actualización</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Usuario</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Acciones</strong>
                   </TableCell>
                 </TableRow>
-              ) : (
-                tipos.map((tipo) => (
-                  <TableRow key={tipo.id} hover>
-                    <TableCell>
-                      <strong>{tipo.codigo}</strong>
-                    </TableCell>
-                    <TableCell>{tipo.nombre}</TableCell>
-                    <TableCell>
-                      <Tooltip title={tipo.ultimaAccion || "Sin información"}>
-                        <span>
-                          {new Date(
-                            tipo.ultimaAccion || tipo.updatedAt
-                          ).toLocaleDateString("es-CO")}{" "}
-                          {new Date(
-                            tipo.ultimaAccion || tipo.updatedAt
-                          ).toLocaleTimeString("es-CO")}
-                        </span>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip
-                        title={`Último usuario: ${
-                          tipo.ultimoUsuario || "Sistema"
-                        }`}
-                      >
-                        <span>{tipo.ultimoUsuario || "Sistema"}</span>
-                      </Tooltip>
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenModal(tipo)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(tipo.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {tipos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No hay tipos de documento registrados
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  tipos.map((tipo) => (
+                    <TableRow key={tipo.id} hover>
+                      <TableCell>
+                        <strong>{tipo.codigo}</strong>
+                      </TableCell>
+                      <TableCell>{tipo.nombre}</TableCell>
+                      <TableCell>
+                        <Tooltip title={tipo.ultimaAccion || "Sin información"}>
+                          <span>
+                            {new Date(
+                              tipo.ultimaAccion || tipo.updatedAt
+                            ).toLocaleDateString("es-CO")}{" "}
+                            {new Date(
+                              tipo.ultimaAccion || tipo.updatedAt
+                            ).toLocaleTimeString("es-CO")}
+                          </span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip
+                          title={`Último usuario: ${
+                            tipo.ultimoUsuario || "Sistema"
+                          }`}
+                        >
+                          <span>{tipo.ultimoUsuario || "Sistema"}</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenModal(tipo)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(tipo.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
 
-        {/* Modal */}
+        <TabPanel value={tabValue} index={1}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Aquí se muestran los tipos de documento inactivos. Puedes
+            reactivarlos si es necesario.
+          </Alert>
+          <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
+            <Table>
+              <TableHead sx={{ bgcolor: "#f5f7fa" }}>
+                <TableRow>
+                  <TableCell>
+                    <strong>Código</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Nombre</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Inactivado en</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Usuario</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Acciones</strong>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {tiposInactivos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                      No hay tipos de documento inactivos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  tiposInactivos.map((tipo) => (
+                    <TableRow key={tipo.id} hover sx={{ opacity: 0.7 }}>
+                      <TableCell>
+                        <strong>{tipo.codigo}</strong>
+                      </TableCell>
+                      <TableCell>{tipo.nombre}</TableCell>
+                      <TableCell>
+                        {new Date(tipo.updatedAt).toLocaleDateString("es-CO")}
+                      </TableCell>
+                      <TableCell>
+                        <Tooltip
+                          title={`Último usuario: ${
+                            tipo.ultimoUsuario || "Sistema"
+                          }`}
+                        >
+                          <span>{tipo.ultimoUsuario || "Sistema"}</span>
+                        </Tooltip>
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRestoreInactive(tipo.id)}
+                          title="Reactivar tipo de documento"
+                        >
+                          <RestoreIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        {/* Modal crear/editar */}
         <Dialog
           open={openModal}
           onClose={handleCloseModal}
@@ -347,6 +551,38 @@ function DocumentTypes() {
               }}
             >
               Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Dialog duplicado */}
+        <Dialog
+          open={openDuplicateDialog}
+          onClose={() => setOpenDuplicateDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>⚠️ Tipo de Documento Duplicado</DialogTitle>
+          <DialogContent sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Ya existe un tipo de documento con el código{" "}
+              <strong>{formData.codigo}</strong> pero está marcado como
+              inactivo.
+            </Alert>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              ¿Deseas reactivarlo con la nueva información o deseas cancelar?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDuplicateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleReactivate}
+              variant="contained"
+              color="success"
+            >
+              Reactivar y Actualizar
             </Button>
           </DialogActions>
         </Dialog>

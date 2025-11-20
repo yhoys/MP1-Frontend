@@ -21,18 +21,40 @@ import {
   IconButton,
   Chip,
   Typography,
+  Tabs,
+  Tab,
+  Alert,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import RestoreIcon from "@mui/icons-material/Restore";
 
 const API = "http://localhost:3001";
 
+function TabPanel(props) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`tabpanel-${index}`}
+      aria-labelledby={`tab-${index}`}
+      {...other}
+    >
+      {value === index && <Box sx={{ pt: 3 }}>{children}</Box>}
+    </div>
+  );
+}
+
 function Usuarios() {
-  const [usuarios, setUsuarios] = useState([]);
+  const [allUsuarios, setAllUsuarios] = useState([]);
   const [documentTypes, setDocumentTypes] = useState([]);
   const [openModal, setOpenModal] = useState(false);
+  const [openDuplicateDialog, setOpenDuplicateDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [tabValue, setTabValue] = useState(0);
+  const [duplicateData, setDuplicateData] = useState(null);
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
@@ -47,20 +69,26 @@ function Usuarios() {
     direccion: "",
   });
 
-  useEffect(() => {
-    fetch(`${API}/usuarios`)
-      .then((r) => r.json())
-      .then((data) =>
-        setUsuarios((data || []).filter((u) => u.estado !== false))
-      )
-      .catch(() => setUsuarios([]));
+  const usuarios = allUsuarios.filter((u) => u.estado !== false);
+  const usuariosInactivos = allUsuarios.filter((u) => u.estado === false);
 
-    fetch(`${API}/documentTypes`)
-      .then((r) => r.json())
-      .then((data) =>
-        setDocumentTypes((data || []).filter((d) => d.estado !== false))
-      )
-      .catch(() => setDocumentTypes([]));
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [usersRes, typesRes] = await Promise.all([
+          fetch(`${API}/usuarios`),
+          fetch(`${API}/documentTypes`),
+        ]);
+        setAllUsuarios((await usersRes.json()) || []);
+        setDocumentTypes(
+          ((await typesRes.json()) || []).filter((d) => d.estado !== false)
+        );
+      } catch {
+        setAllUsuarios([]);
+        setDocumentTypes([]);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleOpenModal = (usuario = null) => {
@@ -91,6 +119,15 @@ function Usuarios() {
     setEditingId(null);
   };
 
+  const checkDuplicate = (nombres, apellidos) => {
+    return allUsuarios.find(
+      (u) =>
+        u.estado === false &&
+        u.nombres.toLowerCase() === nombres.toLowerCase() &&
+        u.apellidos.toLowerCase() === apellidos.toLowerCase()
+    );
+  };
+
   const handleSave = async () => {
     if (
       !formData.nombres ||
@@ -101,6 +138,16 @@ function Usuarios() {
     ) {
       alert("Por favor completa todos los campos requeridos");
       return;
+    }
+
+    // Si es crear, verificar duplicados
+    if (!editingId) {
+      const duplicate = checkDuplicate(formData.nombres, formData.apellidos);
+      if (duplicate) {
+        setDuplicateData(duplicate);
+        setOpenDuplicateDialog(true);
+        return;
+      }
     }
 
     const payload = {
@@ -125,12 +172,35 @@ function Usuarios() {
         });
       }
       setOpenModal(false);
-      // Refresh list - solo mostrar registros activos
       const res = await fetch(`${API}/usuarios`);
-      const data = await res.json();
-      setUsuarios((data || []).filter((u) => u.estado !== false));
+      setAllUsuarios(await res.json());
     } catch (err) {
       alert("Error al guardar usuario");
+      console.error(err);
+    }
+  };
+
+  const handleReactivate = async () => {
+    if (!duplicateData) return;
+    try {
+      const payload = {
+        ...duplicateData,
+        ...formData,
+        estado: true,
+        updatedAt: new Date().toISOString(),
+      };
+      await fetch(`${API}/usuarios/${duplicateData.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      setOpenDuplicateDialog(false);
+      setOpenModal(false);
+      setDuplicateData(null);
+      const res = await fetch(`${API}/usuarios`);
+      setAllUsuarios(await res.json());
+    } catch (err) {
+      alert("Error al reactivar usuario");
       console.error(err);
     }
   };
@@ -148,10 +218,32 @@ function Usuarios() {
             updatedAt: new Date().toISOString(),
           }),
         });
-        // Actualizar lista - remover registro inactivo
-        setUsuarios(usuarios.filter((u) => u.id !== id));
+        const res = await fetch(`${API}/usuarios`);
+        setAllUsuarios(await res.json());
       } catch (err) {
         alert("Error al eliminar usuario");
+        console.error(err);
+      }
+    }
+  };
+
+  const handleRestoreInactive = async (id) => {
+    if (window.confirm("¿Deseas reactivar este usuario?")) {
+      try {
+        const usuario = usuariosInactivos.find((u) => u.id === id);
+        await fetch(`${API}/usuarios/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...usuario,
+            estado: true,
+            updatedAt: new Date().toISOString(),
+          }),
+        });
+        const res = await fetch(`${API}/usuarios`);
+        setAllUsuarios(await res.json());
+      } catch (err) {
+        alert("Error al reactivar usuario");
         console.error(err);
       }
     }
@@ -182,87 +274,169 @@ function Usuarios() {
           >
             Gestión de Usuarios
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenModal()}
-            sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-            }}
-          >
-            Nuevo Usuario
-          </Button>
+          {tabValue === 0 && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenModal()}
+              sx={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              }}
+            >
+              Nuevo Usuario
+            </Button>
+          )}
         </Box>
 
-        <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
-          <Table>
-            <TableHead sx={{ bgcolor: "#f5f7fa" }}>
-              <TableRow>
-                <TableCell>
-                  <strong>Nombres</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Apellidos</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Documento</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Email</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Teléfono</strong>
-                </TableCell>
-                <TableCell>
-                  <strong>Rol</strong>
-                </TableCell>
-                <TableCell align="center">
-                  <strong>Acciones</strong>
-                </TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {usuarios.length === 0 ? (
+        <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
+          <Tabs
+            value={tabValue}
+            onChange={(e, newValue) => setTabValue(newValue)}
+            aria-label="usuario tabs"
+          >
+            <Tab label={`Activos (${usuarios.length})`} id="tab-0" />
+            <Tab label={`Inactivos (${usuariosInactivos.length})`} id="tab-1" />
+          </Tabs>
+        </Box>
+
+        <TabPanel value={tabValue} index={0}>
+          <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
+            <Table>
+              <TableHead sx={{ bgcolor: "#f5f7fa" }}>
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                    No hay usuarios registrados
+                  <TableCell>
+                    <strong>Nombres</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Apellidos</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Documento</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Email</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Teléfono</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Rol</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Acciones</strong>
                   </TableCell>
                 </TableRow>
-              ) : (
-                usuarios.map((usuario) => (
-                  <TableRow key={usuario.id} hover>
-                    <TableCell>{usuario.nombres}</TableCell>
-                    <TableCell>{usuario.apellidos}</TableCell>
-                    <TableCell>
-                      {usuario.tipoDocumento} - {usuario.numeroDocumento}
-                    </TableCell>
-                    <TableCell>{usuario.email}</TableCell>
-                    <TableCell>{usuario.telefono}</TableCell>
-                    <TableCell>
-                      <Chip label={usuario.rol || "Sin rol"} size="small" />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleOpenModal(usuario)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDelete(usuario.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+              </TableHead>
+              <TableBody>
+                {usuarios.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                      No hay usuarios registrados
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                ) : (
+                  usuarios.map((usuario) => (
+                    <TableRow key={usuario.id} hover>
+                      <TableCell>{usuario.nombres}</TableCell>
+                      <TableCell>{usuario.apellidos}</TableCell>
+                      <TableCell>
+                        {usuario.tipoDocumento} - {usuario.numeroDocumento}
+                      </TableCell>
+                      <TableCell>{usuario.email}</TableCell>
+                      <TableCell>{usuario.telefono}</TableCell>
+                      <TableCell>
+                        <Chip label={usuario.rol || "Sin rol"} size="small" />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleOpenModal(usuario)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDelete(usuario.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
 
-        {/* Modal */}
+        <TabPanel value={tabValue} index={1}>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Aquí se muestran los usuarios inactivos. Puedes reactivarlos si es
+            necesario.
+          </Alert>
+          <TableContainer component={Paper} sx={{ borderRadius: "12px" }}>
+            <Table>
+              <TableHead sx={{ bgcolor: "#f5f7fa" }}>
+                <TableRow>
+                  <TableCell>
+                    <strong>Nombres</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Apellidos</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Documento</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Email</strong>
+                  </TableCell>
+                  <TableCell>
+                    <strong>Inactivado en</strong>
+                  </TableCell>
+                  <TableCell align="center">
+                    <strong>Acciones</strong>
+                  </TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {usuariosInactivos.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                      No hay usuarios inactivos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  usuariosInactivos.map((usuario) => (
+                    <TableRow key={usuario.id} hover sx={{ opacity: 0.7 }}>
+                      <TableCell>{usuario.nombres}</TableCell>
+                      <TableCell>{usuario.apellidos}</TableCell>
+                      <TableCell>
+                        {usuario.tipoDocumento} - {usuario.numeroDocumento}
+                      </TableCell>
+                      <TableCell>{usuario.email}</TableCell>
+                      <TableCell>
+                        {new Date(usuario.updatedAt).toLocaleDateString(
+                          "es-CO"
+                        )}
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleRestoreInactive(usuario.id)}
+                          title="Reactivar usuario"
+                        >
+                          <RestoreIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
+        {/* Modal crear/editar */}
         <Dialog
           open={openModal}
           onClose={handleCloseModal}
@@ -402,6 +576,40 @@ function Usuarios() {
               }}
             >
               Guardar
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Dialog duplicado */}
+        <Dialog
+          open={openDuplicateDialog}
+          onClose={() => setOpenDuplicateDialog(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>⚠️ Usuario Duplicado</DialogTitle>
+          <DialogContent sx={{ pt: 2 }}>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Ya existe un usuario con el nombre{" "}
+              <strong>
+                {formData.nombres} {formData.apellidos}
+              </strong>{" "}
+              pero está marcado como inactivo.
+            </Alert>
+            <Typography variant="body2" sx={{ mb: 2 }}>
+              ¿Deseas reactivarlo con la nueva información o deseas cancelar?
+            </Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDuplicateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleReactivate}
+              variant="contained"
+              color="success"
+            >
+              Reactivar y Actualizar
             </Button>
           </DialogActions>
         </Dialog>
