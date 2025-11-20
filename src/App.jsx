@@ -1,35 +1,76 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import Navigation from "./components/Navigation";
+import { Container, Typography } from "@mui/material";
+import { AuthProvider } from "./auth/AuthProvider";
+import PrivateRoute from "./components/PrivateRoute";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+// Componente Layout: Envuelve las páginas que llevan Menú
+function Layout({ children }) {
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <Navigation />
+      <Container sx={{ mt: 4 }}>{children}</Container>
     </>
-  )
+  );
 }
 
-export default App
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Ruta Pública: Login (Sin menú) */}
+          <Route path="/" element={<Login />} />
+
+          {/* Rutas Privadas (Con menú) */}
+          <Route
+            path="/home"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Typography variant="h4">Bienvenido al Sistema</Typography>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Typography variant="h4">Gestión de Usuarios</Typography>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Typography variant="h4">Gestión de Roles</Typography>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/document-types"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Typography variant="h4">Tipos de Documento</Typography>
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+
+          {/* Catch-all: redirige al login */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
+  );
+}
+
+export default App;
