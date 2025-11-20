@@ -1,0 +1,16 @@
+{
+  "users": [],
+  "roles": [
+    {
+      "id": "1",
+      "name": "Super Administrador",
+      "accessUsers": true,
+      "state": true
+    },
+    { "id": "2", "name": "Vendedor", "accessUsers": false, "state": true }
+  ],
+  "documentTypes": [
+    { "id": "1", "code": "CC", "name": "Cédula", "state": true },
+    { "id": "2", "code": "TI", "name": "Tarjeta Identidad", "state": true }
+  ]
+}
