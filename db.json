@@ -1,7 +1,7 @@
 {
   "usuarios": [
     {
-      "id": 1,
+      "id": "1",
       "nombres": "Carlos",
       "apellidos": "García Pérez",
       "tipoDocumento": "CC",
@@ -14,11 +14,25 @@
       "estado": true,
       "createdAt": "2025-11-20T10:00:00.000Z",
       "updatedAt": "2025-11-20T10:00:00.000Z"
+    },
+    {
+      "id": "249b",
+      "nombres": "Pedro",
+      "apellidos": "Perez",
+      "tipoDocumento": "Cédula de Ciudadanía",
+      "numeroDocumento": "123456789",
+      "genero": "Masculino",
+      "email": "pedro.perez@example.com",
+      "telefono": "3123456789",
+      "rol": "Administrador",
+      "fechaNacimiento": "1995-04-12",
+      "estado": true,
+      "updatedAt": "2025-11-20T16:31:07.700Z"
     }
   ],
   "roles": [
     {
-      "id": 1,
+      "id": "1",
       "nombre": "Super Administrador",
       "descripcion": "Acceso total al sistema",
       "estado": true,
@@ -26,7 +40,7 @@
       "updatedAt": "2025-11-20T10:00:00.000Z"
     },
     {
-      "id": 2,
+      "id": "2",
       "nombre": "Administrador",
       "descripcion": "Administrador del sistema sin acceso total",
       "estado": true,
@@ -36,25 +50,31 @@
   ],
   "documentTypes": [
     {
-      "id": 1,
+      "codigo": "CC",
       "nombre": "Cédula de Ciudadanía",
       "estado": true,
-      "createdAt": "2025-11-20T10:00:00.000Z",
-      "updatedAt": "2025-11-20T10:00:00.000Z"
+      "updatedAt": "2025-11-20T16:34:44.599Z",
+      "ultimoUsuario": "user",
+      "ultimaAccion": "2025-11-20T16:34:44.599Z",
+      "id": "1"
     },
     {
-      "id": 2,
+      "codigo": "PASS",
       "nombre": "Pasaporte",
       "estado": true,
-      "createdAt": "2025-11-20T10:00:00.000Z",
-      "updatedAt": "2025-11-20T10:00:00.000Z"
+      "updatedAt": "2025-11-20T16:34:50.578Z",
+      "ultimoUsuario": "user",
+      "ultimaAccion": "2025-11-20T16:34:50.578Z",
+      "id": "2"
     },
     {
-      "id": 3,
+      "codigo": "CE",
       "nombre": "Cédula de Extranjería",
       "estado": true,
-      "createdAt": "2025-11-20T10:00:00.000Z",
-      "updatedAt": "2025-11-20T10:00:00.000Z"
+      "updatedAt": "2025-11-20T16:34:56.160Z",
+      "ultimoUsuario": "user",
+      "ultimaAccion": "2025-11-20T16:34:56.160Z",
+      "id": "3"
     }
   ]
 }

@@ -54,10 +54,13 @@ function Home() {
     >
       <Box sx={{ maxWidth: 1400, mx: "auto" }}>
         <Box sx={{ mb: 6 }}>
-          <Typography variant="h4" sx={{ fontWeight: "bold", mb: 2 }}>
+          <Typography
+            variant="h4"
+            sx={{ fontWeight: "bold", mb: 2, color: "#2c3e50" }}
+          >
             ¡Bienvenido, {user?.name || "Usuario"}!
           </Typography>
-          <Typography variant="subtitle1" color="textSecondary">
+          <Typography variant="subtitle1" sx={{ color: "#555" }}>
             Sistema de Gestión de Usuarios - Administración
           </Typography>
         </Box>

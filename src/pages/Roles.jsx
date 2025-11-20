@@ -35,7 +35,7 @@ function Roles() {
   useEffect(() => {
     fetch(`${API}/roles`)
       .then((r) => r.json())
-      .then((data) => setRoles(data || []))
+      .then((data) => setRoles((data || []).filter((r) => r.estado !== false)))
       .catch(() => setRoles([]));
   }, []);
 
@@ -85,7 +85,7 @@ function Roles() {
       setOpenModal(false);
       const res = await fetch(`${API}/roles`);
       const data = await res.json();
-      setRoles(data || []);
+      setRoles((data || []).filter((r) => r.estado !== false));
     } catch (error) {
       alert("Error al guardar rol");
       console.error(error);
@@ -99,8 +99,13 @@ function Roles() {
         await fetch(`${API}/roles/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...rol, estado: false }),
+          body: JSON.stringify({
+            ...rol,
+            estado: false,
+            updatedAt: new Date().toISOString(),
+          }),
         });
+        // Actualizar lista - remover registro inactivo
         setRoles(roles.filter((r) => r.id !== id));
       } catch (error) {
         alert("Error al eliminar rol");
@@ -128,7 +133,10 @@ function Roles() {
             mb: 3,
           }}
         >
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: "bold", color: "#2c3e50" }}
+          >
             Gestión de Roles
           </Typography>
           <Button

@@ -14,37 +14,45 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
   IconButton,
   Typography,
+  Tooltip,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import { useAuth } from "../auth/AuthProvider";
 
 const API = "http://localhost:3001";
 
 function DocumentTypes() {
+  const { user } = useAuth();
   const [tipos, setTipos] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
+    codigo: "",
     nombre: "",
   });
 
   useEffect(() => {
     fetch(`${API}/documentTypes`)
       .then((r) => r.json())
-      .then((data) => setTipos(data || []))
+      .then((data) => setTipos((data || []).filter((t) => t.estado !== false)))
       .catch(() => setTipos([]));
   }, []);
 
   const handleOpenModal = (tipo = null) => {
     if (tipo) {
       setEditingId(tipo.id);
-      setFormData({ nombre: tipo.nombre });
+      setFormData({ codigo: tipo.codigo, nombre: tipo.nombre });
     } else {
       setEditingId(null);
-      setFormData({ nombre: "" });
+      setFormData({ codigo: "", nombre: "" });
     }
     setOpenModal(true);
   };
@@ -55,16 +63,28 @@ function DocumentTypes() {
   };
 
   const handleSave = async () => {
-    if (!formData.nombre) {
-      alert("El nombre del tipo de documento es requerido");
+    if (!formData.codigo || !formData.nombre) {
+      alert("El código y nombre del tipo de documento son requeridos");
       return;
     }
+
+    const now = new Date().toISOString();
+    const action = editingId ? "Modificado" : "Creado";
+    const auditEntry = {
+      tipo: "DocumentType",
+      accion: action,
+      usuario: user?.name || "Sistema",
+      fechaHora: now,
+      descripcion: `${action}: ${formData.nombre} (${formData.codigo})`,
+    };
 
     const payload = {
       ...formData,
       estado: true,
-      createdAt: editingId ? undefined : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: editingId ? undefined : now,
+      updatedAt: now,
+      ultimoUsuario: user?.name || "Sistema",
+      ultimaAccion: now,
     };
 
     try {
@@ -81,10 +101,18 @@ function DocumentTypes() {
           body: JSON.stringify(payload),
         });
       }
+
+      // Log auditoria
+      await fetch(`${API}/auditLogs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(auditEntry),
+      }).catch(() => {}); // Si falla, continúa sin error
+
       setOpenModal(false);
       const res = await fetch(`${API}/documentTypes`);
       const data = await res.json();
-      setTipos(data || []);
+      setTipos((data || []).filter((t) => t.estado !== false));
     } catch (error) {
       alert("Error al guardar tipo de documento");
       console.error(error);
@@ -97,11 +125,34 @@ function DocumentTypes() {
     ) {
       try {
         const tipo = tipos.find((t) => t.id === id);
+        const now = new Date().toISOString();
+
+        const auditEntry = {
+          tipo: "DocumentType",
+          accion: "Eliminado",
+          usuario: user?.name || "Sistema",
+          fechaHora: now,
+          descripcion: `Eliminado: ${tipo.nombre} (${tipo.codigo})`,
+        };
+
         await fetch(`${API}/documentTypes/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...tipo, estado: false }),
+          body: JSON.stringify({
+            ...tipo,
+            estado: false,
+            ultimoUsuario: user?.name || "Sistema",
+            ultimaAccion: now,
+          }),
         });
+
+        // Log auditoria
+        await fetch(`${API}/auditLogs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(auditEntry),
+        }).catch(() => {});
+
         setTipos(tipos.filter((t) => t.id !== id));
       } catch (error) {
         alert("Error al eliminar tipo de documento");
@@ -129,7 +180,10 @@ function DocumentTypes() {
             mb: 3,
           }}
         >
-          <Typography variant="h5" sx={{ fontWeight: "bold" }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: "bold", color: "#2c3e50" }}
+          >
             Gestión de Tipos de Documento
           </Typography>
           <Button
@@ -149,13 +203,16 @@ function DocumentTypes() {
             <TableHead sx={{ bgcolor: "#f5f7fa" }}>
               <TableRow>
                 <TableCell>
+                  <strong>Código</strong>
+                </TableCell>
+                <TableCell>
                   <strong>Nombre</strong>
                 </TableCell>
                 <TableCell>
-                  <strong>Fecha Creación</strong>
+                  <strong>Última Actualización</strong>
                 </TableCell>
                 <TableCell>
-                  <strong>Última Actualización</strong>
+                  <strong>Usuario</strong>
                 </TableCell>
                 <TableCell align="center">
                   <strong>Acciones</strong>
@@ -165,7 +222,7 @@ function DocumentTypes() {
             <TableBody>
               {tipos.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                     No hay tipos de documento registrados
                   </TableCell>
                 </TableRow>
@@ -173,13 +230,29 @@ function DocumentTypes() {
                 tipos.map((tipo) => (
                   <TableRow key={tipo.id} hover>
                     <TableCell>
-                      <strong>{tipo.nombre}</strong>
+                      <strong>{tipo.codigo}</strong>
+                    </TableCell>
+                    <TableCell>{tipo.nombre}</TableCell>
+                    <TableCell>
+                      <Tooltip title={tipo.ultimaAccion || "Sin información"}>
+                        <span>
+                          {new Date(
+                            tipo.ultimaAccion || tipo.updatedAt
+                          ).toLocaleDateString("es-CO")}{" "}
+                          {new Date(
+                            tipo.ultimaAccion || tipo.updatedAt
+                          ).toLocaleTimeString("es-CO")}
+                        </span>
+                      </Tooltip>
                     </TableCell>
                     <TableCell>
-                      {new Date(tipo.createdAt).toLocaleDateString("es-CO")}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(tipo.updatedAt).toLocaleDateString("es-CO")}
+                      <Tooltip
+                        title={`Último usuario: ${
+                          tipo.ultimoUsuario || "Sistema"
+                        }`}
+                      >
+                        <span>{tipo.ultimoUsuario || "Sistema"}</span>
+                      </Tooltip>
                     </TableCell>
                     <TableCell align="center">
                       <IconButton
@@ -215,8 +288,46 @@ function DocumentTypes() {
           <DialogContent
             sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}
           >
+            {!editingId && (
+              <FormControl fullWidth>
+                <InputLabel>Seleccionar Tipo Predefinido</InputLabel>
+                <Select
+                  label="Seleccionar Tipo Predefinido"
+                  onChange={(e) => {
+                    const selected = e.target.value.split("|");
+                    setFormData({ codigo: selected[0], nombre: selected[1] });
+                  }}
+                  defaultValue=""
+                >
+                  <MenuItem value="">Personalizado</MenuItem>
+                  <MenuItem value="CC|Cédula de Ciudadanía">
+                    Cédula de Ciudadanía
+                  </MenuItem>
+                  <MenuItem value="PASS|Pasaporte">Pasaporte</MenuItem>
+                  <MenuItem value="CE|Cédula de Extranjería">
+                    Cédula de Extranjería
+                  </MenuItem>
+                  <MenuItem value="PE|Permiso de Estancia">
+                    Permiso de Estancia
+                  </MenuItem>
+                </Select>
+              </FormControl>
+            )}
             <TextField
-              label="Nombre del Tipo"
+              label="Código"
+              placeholder="Ej: CC, PASS, CE..."
+              value={formData.codigo}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  codigo: e.target.value.toUpperCase(),
+                })
+              }
+              fullWidth
+              required
+            />
+            <TextField
+              label="Nombre/Descripción"
               placeholder="Ej: Cédula de Ciudadanía, Pasaporte..."
               value={formData.nombre}
               onChange={(e) =>
