@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Box,
-  Container,
   Grid,
   Card,
   CardContent,
@@ -49,9 +48,11 @@ function Home() {
         minHeight: "calc(100vh - 64px)",
         background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
         py: 6,
+        px: { xs: 2, sm: 3, md: 4 },
+        width: "100%",
       }}
     >
-      <Container maxWidth="lg">
+      <Box sx={{ maxWidth: 1400, mx: "auto" }}>
         <Box sx={{ mb: 6 }}>
           <Typography variant="h4" sx={{ fontWeight: "bold", mb: 2 }}>
             ¡Bienvenido, {user?.name || "Usuario"}!
@@ -119,7 +120,7 @@ function Home() {
             </Grid>
           ))}
         </Grid>
-      </Container>
+      </Box>
     </Box>
   );
 }

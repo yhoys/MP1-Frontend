@@ -6,7 +6,6 @@ import {
   Button,
   Menu,
   MenuItem,
-  Container,
   Box,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
@@ -26,77 +25,76 @@ function Navigation() {
 
   return (
     <AppBar position="static">
-      <Container maxWidth="xl">
-        <Toolbar
+      <Toolbar
+        sx={{
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: "center",
+          gap: 1,
+          px: { xs: 2, sm: 3, md: 4 },
+        }}
+      >
+        {/* Title Section */}
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{ mr: 4, cursor: "pointer" }}
+          onClick={() => navigate("/home")}
+        >
+          MICROPROYECTO FRONTEND
+        </Typography>
+
+        {/* Buttons Section */}
+        <Box
           sx={{
+            flexGrow: 1,
             display: "flex",
-            flexDirection: { xs: "column", sm: "row" },
-            alignItems: "center",
+            flexWrap: "wrap",
             gap: 1,
+            justifyContent: { xs: "center", sm: "flex-end" },
           }}
         >
-          {/* Title Section */}
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ mr: 4, cursor: "pointer" }}
-            onClick={() => navigate("/home")}
+          {/* 1. Menú Desplegable "Sistema" */}
+          <Button
+            color="inherit"
+            onClick={handleClick}
+            aria-controls={open ? "basic-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={open ? "true" : undefined}
           >
-            MICROPROYECTO FRONTEND
-          </Typography>
-
-          {/* Buttons Section */}
-          <Box
-            sx={{
-              flexGrow: 1,
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 1,
-              justifyContent: { xs: "center", sm: "flex-end" },
-            }}
+            Sistema ▼
+          </Button>
+          <Menu
+            id="basic-menu"
+            anchorEl={anchorEl}
+            open={open}
+            onClose={handleClose}
           >
-            {/* 1. Menú Desplegable "Sistema" */}
-            <Button
-              color="inherit"
-              onClick={handleClick}
-              aria-controls={open ? "basic-menu" : undefined}
-              aria-haspopup="true"
-              aria-expanded={open ? "true" : undefined}
+            <MenuItem onClick={handleClose}>Opción 1</MenuItem>
+            <MenuItem onClick={handleClose}>Opción 2</MenuItem>
+            <MenuItem
+              onClick={() => {
+                handleClose();
+                auth.logout();
+                navigate("/");
+              }}
             >
-              Sistema ▼
-            </Button>
-            <Menu
-              id="basic-menu"
-              anchorEl={anchorEl}
-              open={open}
-              onClose={handleClose}
-            >
-              <MenuItem onClick={handleClose}>Opción 1</MenuItem>
-              <MenuItem onClick={handleClose}>Opción 2</MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleClose();
-                  auth.logout();
-                  navigate("/");
-                }}
-              >
-                Salir
-              </MenuItem>
-            </Menu>
+              Salir
+            </MenuItem>
+          </Menu>
 
-            {/* 2. Enlaces Directos */}
-            <Button color="inherit" onClick={() => navigate("/document-types")}>
-              Tipo Documento
-            </Button>
-            <Button color="inherit" onClick={() => navigate("/roles")}>
-              Roles
-            </Button>
-            <Button color="inherit" onClick={() => navigate("/users")}>
-              Usuarios
-            </Button>
-          </Box>
-        </Toolbar>
-      </Container>
+          {/* 2. Enlaces Directos */}
+          <Button color="inherit" onClick={() => navigate("/document-types")}>
+            Tipo Documento
+          </Button>
+          <Button color="inherit" onClick={() => navigate("/roles")}>
+            Roles
+          </Button>
+          <Button color="inherit" onClick={() => navigate("/users")}>
+            Usuarios
+          </Button>
+        </Box>
+      </Toolbar>
     </AppBar>
   );
 }

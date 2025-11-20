@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Box,
-  Container,
   Table,
   TableBody,
   TableCell,
@@ -114,11 +113,13 @@ function Roles() {
     <Box
       sx={{
         py: 4,
+        px: { xs: 2, sm: 3, md: 4 },
         background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
         minHeight: "calc(100vh - 64px)",
+        width: "100%",
       }}
     >
-      <Container maxWidth="lg">
+      <Box sx={{ maxWidth: 1400, mx: "auto" }}>
         <Box
           sx={{
             display: "flex",
@@ -242,7 +243,7 @@ function Roles() {
             </Button>
           </DialogActions>
         </Dialog>
-      </Container>
+      </Box>
     </Box>
   );
 }
