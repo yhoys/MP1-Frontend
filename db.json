@@ -1,16 +1,60 @@
 {
-  "users": [],
+  "usuarios": [
+    {
+      "id": 1,
+      "nombres": "Carlos",
+      "apellidos": "García Pérez",
+      "tipoDocumento": "CC",
+      "numeroDocumento": "1234567890",
+      "genero": "Masculino",
+      "email": "carlos.garcia@example.com",
+      "telefono": "3101234567",
+      "rol": "Super Administrador",
+      "fechaNacimiento": "1990-05-15",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
+    }
+  ],
   "roles": [
     {
-      "id": "1",
-      "name": "Super Administrador",
-      "accessUsers": true,
-      "state": true
+      "id": 1,
+      "nombre": "Super Administrador",
+      "descripcion": "Acceso total al sistema",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
     },
-    { "id": "2", "name": "Vendedor", "accessUsers": false, "state": true }
+    {
+      "id": 2,
+      "nombre": "Administrador",
+      "descripcion": "Administrador del sistema sin acceso total",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
+    }
   ],
   "documentTypes": [
-    { "id": "1", "code": "CC", "name": "Cédula", "state": true },
-    { "id": "2", "code": "TI", "name": "Tarjeta Identidad", "state": true }
+    {
+      "id": 1,
+      "nombre": "Cédula de Ciudadanía",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
+    },
+    {
+      "id": 2,
+      "nombre": "Pasaporte",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
+    },
+    {
+      "id": 3,
+      "nombre": "Cédula de Extranjería",
+      "estado": true,
+      "createdAt": "2025-11-20T10:00:00.000Z",
+      "updatedAt": "2025-11-20T10:00:00.000Z"
+    }
   ]
 }

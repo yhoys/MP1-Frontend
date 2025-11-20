@@ -27,7 +27,14 @@ function Navigation() {
   return (
     <AppBar position="static">
       <Container maxWidth="xl">
-        <Toolbar>
+        <Toolbar
+          sx={{
+            display: "flex",
+            flexDirection: { xs: "column", sm: "row" },
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
           {/* Title Section */}
           <Typography
             variant="h6"
@@ -39,7 +46,15 @@ function Navigation() {
           </Typography>
 
           {/* Buttons Section */}
-          <Box sx={{ flexGrow: 1, display: "flex" }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 1,
+              justifyContent: { xs: "center", sm: "flex-end" },
+            }}
+          >
             {/* 1. Menú Desplegable "Sistema" */}
             <Button
               color="inherit"

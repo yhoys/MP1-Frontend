@@ -1,17 +1,21 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
+import Home from "./pages/Home";
+import Usuarios from "./pages/Usuarios";
+import Roles from "./pages/Roles";
+import DocumentTypes from "./pages/DocumentTypes";
 import Navigation from "./components/Navigation";
-import { Container, Typography } from "@mui/material";
+import { Box } from "@mui/material";
 import { AuthProvider } from "./auth/AuthProvider";
 import PrivateRoute from "./components/PrivateRoute";
 
 // Componente Layout: Envuelve las páginas que llevan Menú
 function Layout({ children }) {
   return (
-    <>
+    <Box>
       <Navigation />
-      <Container sx={{ mt: 4 }}>{children}</Container>
-    </>
+      {children}
+    </Box>
   );
 }
 
@@ -29,7 +33,7 @@ function App() {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Typography variant="h4">Bienvenido al Sistema</Typography>
+                  <Home />
                 </Layout>
               </PrivateRoute>
             }
@@ -39,7 +43,7 @@ function App() {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Typography variant="h4">Gestión de Usuarios</Typography>
+                  <Usuarios />
                 </Layout>
               </PrivateRoute>
             }
@@ -49,7 +53,7 @@ function App() {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Typography variant="h4">Gestión de Roles</Typography>
+                  <Roles />
                 </Layout>
               </PrivateRoute>
             }
@@ -59,7 +63,7 @@ function App() {
             element={
               <PrivateRoute>
                 <Layout>
-                  <Typography variant="h4">Tipos de Documento</Typography>
+                  <DocumentTypes />
                 </Layout>
               </PrivateRoute>
             }
