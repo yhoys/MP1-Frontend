@@ -1,12 +1,5 @@
 import React, { useState } from "react";
-import {
-  Container,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Box,
-} from "@mui/material";
+import { Paper, TextField, Button, Typography, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -25,17 +18,32 @@ function Login() {
   };
 
   return (
-    <Container maxWidth="sm" sx={{ mt: 8 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        p: 2,
+        background:
+          "linear-gradient(135deg, rgba(8,10,20,1) 0%, rgba(25,25,45,1) 100%)",
+      }}
+    >
       <Paper
-        elevation={3}
+        elevation={6}
         sx={{
+          width: { xs: "92%", sm: 440 },
           p: 4,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          bgcolor: "rgba(255,255,255,0.04)",
+          color: "#fff",
+          backdropFilter: "blur(8px)",
+          border: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <Typography component="h1" variant="h5" mb={3}>
+        <Typography component="h1" variant="h5" mb={2} sx={{ color: "#fff" }}>
           Ingreso al Sistema
         </Typography>
 
@@ -52,8 +60,12 @@ function Login() {
             autoFocus
             value={login}
             onChange={(e) => setLogin(e.target.value)}
-            // VALIDACIÓN VISUAL: Máximo 40 caracteres
             inputProps={{ maxLength: 40 }}
+            variant="filled"
+            InputLabelProps={{ sx: { color: "rgba(255,255,255,0.8)" } }}
+            InputProps={{
+              sx: { backgroundColor: "rgba(255,255,255,0.03)", color: "#fff" },
+            }}
           />
           <TextField
             margin="normal"
@@ -63,8 +75,12 @@ function Login() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            // VALIDACIÓN: Máximo 200 caracteres (por requisito de cifrado backend)
             inputProps={{ maxLength: 200 }}
+            variant="filled"
+            InputLabelProps={{ sx: { color: "rgba(255,255,255,0.8)" } }}
+            InputProps={{
+              sx: { backgroundColor: "rgba(255,255,255,0.03)", color: "#fff" },
+            }}
           />
 
           <Button
@@ -77,7 +93,7 @@ function Login() {
           </Button>
         </Box>
       </Paper>
-    </Container>
+    </Box>
   );
 }
 
