@@ -10,7 +10,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../auth/AuthProvider";
+import { useAuth } from "../auth/useAuth";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { isValidEmail } from "../utils/validators";
 
@@ -91,8 +91,8 @@ function Login() {
           Gestión de Usuarios y Administración
         </Typography>
         <Typography variant="body1" sx={{ maxWidth: 300, opacity: 0.8 }}>
-          Sistema integral para administrar usuarios, roles y tipos de
-          documento de manera eficiente y segura.
+          Sistema integral para administrar usuarios, roles y tipos de documento
+          de manera eficiente y segura.
         </Typography>
       </Box>
 

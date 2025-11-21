@@ -1,24 +1,31 @@
-import React, { useEffect, useState } from "react";
-import AuthContext from "./authContext";
+﻿import React, { useEffect, useState } from "react";
+import { AuthContext } from "./AuthContext";
 
 const API_URL = "http://localhost:3001";
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+const getStoredUser = () => {
+  if (typeof window === "undefined") return null;
+  try {
     const token = localStorage.getItem("mp1_token");
     const userData = localStorage.getItem("mp1_user");
     return token && userData ? JSON.parse(userData) : null;
-  });
+  } catch (err) {
+    console.warn("Error leyendo usuario almacenado, limpiando cache", err);
+    localStorage.removeItem("mp1_token");
+    localStorage.removeItem("mp1_user");
+    return null;
+  }
+};
 
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(getStoredUser);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Keep user in sync with storage
+    if (typeof window === "undefined") return undefined;
     const onStorage = () => {
-      const token = localStorage.getItem("mp1_token");
-      const userData = localStorage.getItem("mp1_user");
-      setUser(token && userData ? JSON.parse(userData) : null);
+      setUser(getStoredUser());
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -38,16 +45,19 @@ export function AuthProvider({ children }) {
       );
 
       if (!foundUser) {
-        setError("Email o contraseña incorrectos");
-        setLoading(false);
+        setError("Email o contrasena incorrectos");
         return false;
       }
 
-      // Convertir rolId a número si es string
       const rolId =
         typeof foundUser.rolId === "string"
-          ? parseInt(foundUser.rolId)
+          ? parseInt(foundUser.rolId, 10)
           : foundUser.rolId;
+
+      if (!Number.isFinite(rolId)) {
+        setError("Rol del usuario invalido");
+        return false;
+      }
 
       const roleResponse = await fetch(`${API_URL}/roles/${rolId}`);
       if (!roleResponse.ok) throw new Error("Error fetching role");
@@ -59,7 +69,7 @@ export function AuthProvider({ children }) {
         nombres: foundUser.nombres,
         apellidos: foundUser.apellidos,
         email: foundUser.email,
-        rolId: foundUser.rolId,
+        rolId: rolId,
         rolNombre: role.nombre,
         permisos: role.permisos || [],
       };
@@ -67,13 +77,13 @@ export function AuthProvider({ children }) {
       localStorage.setItem("mp1_token", `token_${foundUser.id}_${Date.now()}`);
       localStorage.setItem("mp1_user", JSON.stringify(userObj));
       setUser(userObj);
-      setLoading(false);
       return true;
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Error durante el login");
-      setLoading(false);
       return false;
+    } finally {
+      setLoading(false);
     }
   };
 
