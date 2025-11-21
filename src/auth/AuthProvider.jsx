@@ -1,6 +1,5 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-
-const AuthContext = createContext(null);
+import React, { useEffect, useState } from "react";
+import AuthContext from "./authContext";
 
 const API_URL = "http://localhost:3001";
 
@@ -102,11 +101,3 @@ export function AuthProvider({ children }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-  return context;
-};
