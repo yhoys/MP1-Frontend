@@ -24,12 +24,12 @@ import {
   Tabs,
   Tab,
   Alert,
+  Stack,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
-import { useAuth } from "../auth/AuthProvider";
 
 const API = "http://localhost:3001";
 
@@ -49,7 +49,6 @@ function TabPanel(props) {
 }
 
 function DocumentTypes() {
-  const { user } = useAuth();
   const [allTipos, setAllTipos] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [openDuplicateDialog, setOpenDuplicateDialog] = useState(false);
@@ -59,6 +58,7 @@ function DocumentTypes() {
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
+    tipoAccion: "create",
   });
 
   const tipos = allTipos.filter((t) => t.estado !== false);
@@ -100,7 +100,6 @@ function DocumentTypes() {
       return;
     }
 
-    // Si es crear, verificar duplicados
     if (!editingId) {
       const duplicate = checkDuplicate(formData.codigo);
       if (duplicate) {
@@ -111,22 +110,16 @@ function DocumentTypes() {
     }
 
     const now = new Date().toISOString();
-    const action = editingId ? "Modificado" : "Creado";
-    const auditEntry = {
-      tipo: "DocumentType",
-      accion: action,
-      usuario: user?.name || "Sistema",
-      fechaHora: now,
-      descripcion: `${action}: ${formData.nombre} (${formData.codigo})`,
-    };
+    const accion = editingId ? "edit" : "create";
 
     const payload = {
       ...formData,
       estado: true,
+      tipoAccion: accion,
+      usuarioAccion: "Sistema",
+      fechaHoraEvento: now,
       createdAt: editingId ? undefined : now,
       updatedAt: now,
-      ultimoUsuario: user?.name || "Sistema",
-      ultimaAccion: now,
     };
 
     try {
@@ -144,12 +137,6 @@ function DocumentTypes() {
         });
       }
 
-      await fetch(`${API}/auditLogs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(auditEntry),
-      }).catch(() => {});
-
       setOpenModal(false);
       const res = await fetch(`${API}/documentTypes`);
       setAllTipos(await res.json());
@@ -166,17 +153,10 @@ function DocumentTypes() {
         ...duplicateData,
         ...formData,
         estado: true,
+        tipoAccion: "reactivate",
+        usuarioAccion: "Sistema",
+        fechaHoraEvento: now,
         updatedAt: now,
-        ultimoUsuario: user?.name || "Sistema",
-        ultimaAccion: now,
-      };
-
-      const auditEntry = {
-        tipo: "DocumentType",
-        accion: "Reactivado",
-        usuario: user?.name || "Sistema",
-        fechaHora: now,
-        descripcion: `Reactivado: ${formData.nombre} (${formData.codigo})`,
       };
 
       await fetch(`${API}/documentTypes/${duplicateData.id}`, {
@@ -184,12 +164,6 @@ function DocumentTypes() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
-      await fetch(`${API}/auditLogs`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(auditEntry),
-      }).catch(() => {});
 
       setOpenDuplicateDialog(false);
       setOpenModal(false);
@@ -209,30 +183,18 @@ function DocumentTypes() {
         const tipo = tipos.find((t) => t.id === id);
         const now = new Date().toISOString();
 
-        const auditEntry = {
-          tipo: "DocumentType",
-          accion: "Eliminado",
-          usuario: user?.name || "Sistema",
-          fechaHora: now,
-          descripcion: `Eliminado: ${tipo.nombre} (${tipo.codigo})`,
-        };
-
         await fetch(`${API}/documentTypes/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tipo,
             estado: false,
-            ultimoUsuario: user?.name || "Sistema",
-            ultimaAccion: now,
+            tipoAccion: "delete",
+            usuarioAccion: "Sistema",
+            fechaHoraEvento: now,
+            updatedAt: now,
           }),
         });
-
-        await fetch(`${API}/auditLogs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(auditEntry),
-        }).catch(() => {});
 
         const res = await fetch(`${API}/documentTypes`);
         setAllTipos(await res.json());
@@ -248,30 +210,18 @@ function DocumentTypes() {
         const tipo = tiposInactivos.find((t) => t.id === id);
         const now = new Date().toISOString();
 
-        const auditEntry = {
-          tipo: "DocumentType",
-          accion: "Reactivado",
-          usuario: user?.name || "Sistema",
-          fechaHora: now,
-          descripcion: `Reactivado: ${tipo.nombre} (${tipo.codigo})`,
-        };
-
         await fetch(`${API}/documentTypes/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             ...tipo,
             estado: true,
-            ultimoUsuario: user?.name || "Sistema",
-            ultimaAccion: now,
+            tipoAccion: "reactivate",
+            usuarioAccion: "Sistema",
+            fechaHoraEvento: now,
+            updatedAt: now,
           }),
         });
-
-        await fetch(`${API}/auditLogs`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(auditEntry),
-        }).catch(() => {});
 
         const res = await fetch(`${API}/documentTypes`);
         setAllTipos(await res.json());
@@ -346,7 +296,7 @@ function DocumentTypes() {
                     <strong>Última Actualización</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Usuario</strong>
+                    <strong>Tipo Acción</strong>
                   </TableCell>
                   <TableCell align="center">
                     <strong>Acciones</strong>
@@ -368,24 +318,22 @@ function DocumentTypes() {
                       </TableCell>
                       <TableCell>{tipo.nombre}</TableCell>
                       <TableCell>
-                        <Tooltip title={tipo.ultimaAccion || "Sin información"}>
+                        <Tooltip
+                          title={tipo.fechaHoraEvento || "Sin información"}
+                        >
                           <span>
                             {new Date(
-                              tipo.ultimaAccion || tipo.updatedAt
+                              tipo.fechaHoraEvento || tipo.updatedAt
                             ).toLocaleDateString("es-CO")}{" "}
                             {new Date(
-                              tipo.ultimaAccion || tipo.updatedAt
+                              tipo.fechaHoraEvento || tipo.updatedAt
                             ).toLocaleTimeString("es-CO")}
                           </span>
                         </Tooltip>
                       </TableCell>
                       <TableCell>
-                        <Tooltip
-                          title={`Último usuario: ${
-                            tipo.ultimoUsuario || "Sistema"
-                          }`}
-                        >
-                          <span>{tipo.ultimoUsuario || "Sistema"}</span>
+                        <Tooltip title={`Acción: ${tipo.tipoAccion || "N/A"}`}>
+                          <span>{tipo.tipoAccion || "N/A"}</span>
                         </Tooltip>
                       </TableCell>
                       <TableCell align="center">
@@ -429,7 +377,7 @@ function DocumentTypes() {
                     <strong>Inactivado en</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Usuario</strong>
+                    <strong>Tipo Acción</strong>
                   </TableCell>
                   <TableCell align="center">
                     <strong>Acciones</strong>
@@ -455,11 +403,9 @@ function DocumentTypes() {
                       </TableCell>
                       <TableCell>
                         <Tooltip
-                          title={`Último usuario: ${
-                            tipo.ultimoUsuario || "Sistema"
-                          }`}
+                          title={`Tipo acción: ${tipo.tipoAccion || "N/A"}`}
                         >
-                          <span>{tipo.ultimoUsuario || "Sistema"}</span>
+                          <span>{tipo.tipoAccion || "N/A"}</span>
                         </Tooltip>
                       </TableCell>
                       <TableCell align="center">
@@ -479,7 +425,6 @@ function DocumentTypes() {
           </TableContainer>
         </TabPanel>
 
-        {/* Modal crear/editar */}
         <Dialog
           open={openModal}
           onClose={handleCloseModal}
@@ -555,14 +500,13 @@ function DocumentTypes() {
           </DialogActions>
         </Dialog>
 
-        {/* Dialog duplicado */}
         <Dialog
           open={openDuplicateDialog}
           onClose={() => setOpenDuplicateDialog(false)}
           maxWidth="sm"
           fullWidth
         >
-          <DialogTitle>⚠️ Tipo de Documento Duplicado</DialogTitle>
+          <DialogTitle>Tipo de Documento Duplicado</DialogTitle>
           <DialogContent sx={{ pt: 2 }}>
             <Alert severity="warning" sx={{ mb: 2 }}>
               Ya existe un tipo de documento con el código{" "}

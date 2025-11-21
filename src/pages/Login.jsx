@@ -6,23 +6,25 @@ import {
   Typography,
   Box,
   Avatar,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import { isValidEmail } from "../utils/validators";
 
 function Login() {
-  const [login, setLogin] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const auth = useAuth();
+  const { login, loading, error } = useAuth();
 
   const validateForm = () => {
     const newErrors = {};
-    if (!login.trim()) newErrors.login = "El usuario es requerido";
-    else if (login.length < 3) newErrors.login = "Mínimo 3 caracteres";
+    if (!email.trim()) newErrors.email = "El email es requerido";
+    else if (!isValidEmail(email)) newErrors.email = "Email no válido";
     if (!password) newErrors.password = "La contraseña es requerida";
     else if (password.length < 6) newErrors.password = "Mínimo 6 caracteres";
     return newErrors;
@@ -35,16 +37,15 @@ function Login() {
       setErrors(newErrors);
       return;
     }
-    setIsLoading(true);
-    setTimeout(() => {
-      auth.login({ username: login });
+
+    const success = await login({ email, password });
+    if (success) {
       navigate("/home");
-      setIsLoading(false);
-    }, 500);
+    }
   };
 
   const handleInputChange = (field, value) => {
-    if (field === "login") setLogin(value);
+    if (field === "email") setEmail(value);
     else setPassword(value);
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -60,7 +61,6 @@ function Login() {
         overflow: "hidden",
       }}
     >
-      {/* Left Section - Branding/Info */}
       <Box
         sx={{
           display: { xs: "none", md: "flex" },
@@ -91,12 +91,11 @@ function Login() {
           Gestión de Usuarios y Administración
         </Typography>
         <Typography variant="body1" sx={{ maxWidth: 300, opacity: 0.8 }}>
-          Sistema integral para administrar usuarios, roles y tipos de documento
-          de manera eficiente y segura.
+          Sistema integral para administrar usuarios, roles y tipos de
+          documento de manera eficiente y segura.
         </Typography>
       </Box>
 
-      {/* Right Section - Login Form */}
       <Box
         sx={{
           display: "flex",
@@ -144,19 +143,24 @@ function Login() {
             Gestión de Usuarios - Administración
           </Typography>
 
+          {error && (
+            <Alert severity="error" sx={{ width: "100%", mb: 2 }}>
+              {error}
+            </Alert>
+          )}
+
           <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
             <TextField
               fullWidth
-              label="Usuario"
-              placeholder="Ingrese su usuario"
+              label="Email"
+              placeholder="Ingrese su email"
+              type="email"
               autoFocus
-              value={login}
-              onChange={(e) =>
-                handleInputChange("login", e.target.value.slice(0, 40))
-              }
-              error={!!errors.login}
-              helperText={errors.login}
-              inputProps={{ maxLength: 40 }}
+              value={email}
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              error={!!errors.email}
+              helperText={errors.email}
+              disabled={loading}
               sx={{ mb: 2 }}
               variant="outlined"
             />
@@ -166,12 +170,10 @@ function Login() {
               type="password"
               placeholder="Ingrese su contraseña"
               value={password}
-              onChange={(e) =>
-                handleInputChange("password", e.target.value.slice(0, 200))
-              }
+              onChange={(e) => handleInputChange("password", e.target.value)}
               error={!!errors.password}
               helperText={errors.password}
-              inputProps={{ maxLength: 200 }}
+              disabled={loading}
               sx={{ mb: 3 }}
               variant="outlined"
             />
@@ -180,6 +182,7 @@ function Login() {
               type="submit"
               fullWidth
               variant="contained"
+              disabled={loading}
               sx={{
                 mt: 2,
                 mb: 2,
@@ -188,18 +191,24 @@ function Login() {
                 fontWeight: "bold",
                 fontSize: "1rem",
               }}
-              disabled={isLoading}
             >
-              {isLoading ? "Ingresando..." : "Ingresar"}
+              {loading ? (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CircularProgress size={20} color="inherit" />
+                  Ingresando...
+                </Box>
+              ) : (
+                "Ingresar"
+              )}
             </Button>
           </Box>
-          <Typography
-            variant="caption"
-            color="textSecondary"
-            sx={{ mt: 2, textAlign: "center" }}
-          >
-            Demo: usuario: admin | contraseña: admin123
-          </Typography>
+
+          <Alert severity="info" sx={{ width: "100%", mt: 2 }}>
+            <Typography variant="caption">
+              <strong>Demo:</strong> Email: carlos.garcia@example.com |
+              Contraseña: admin123
+            </Typography>
+          </Alert>
         </Paper>
       </Box>
     </Box>

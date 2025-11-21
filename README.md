@@ -1,16 +1,50 @@
-# React + Vite
+# Microproyecto - Gestión de Usuarios, Roles y Tipos de Documento
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación React con autenticación, autorización por roles (RBAC) y módulos CRUD para administrar usuarios, roles y tipos de documento usando json-server como backend mock.
 
-Currently, two official plugins are available:
+## Características
+- Autenticación con email/contraseña contra `json-server`.
+- Control de acceso por permisos: rutas y navegación dinámicas.
+- CRUD completo de usuarios, roles y tipos de documento con soft delete (estado).
+- Validaciones centralizadas (email, teléfono, documento, edad mínima).
+- Auditoría simple para tipos de documento.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Stack
+- React 18 + Vite
+- Material UI (MUI) v5
+- React Router v6
+- Context API para sesión
+- json-server (localhost:3001)
 
-## React Compiler
+## Instalación
+```bash
+cd "Electiva Web/MP1/microproyecto-usuarios"
+npm install
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Scripts
+- `npm run dev`: arranca Vite (frontend en http://localhost:5173).
+- `npm run server` o `npm run backend`: arranca json-server (backend en http://localhost:3001).
+- `npm run build`: build de producción.
+- `npm run lint`: ejecuta ESLint.
 
-## Expanding the ESLint configuration
+## Credenciales de prueba
+- Super Admin: email `carlos.garcia@example.com` / contraseña `admin123`
+- Admin: email `pedro.perez@example.com` / contraseña `pass123`
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Uso rápido
+1. En una terminal: `npm run server`
+2. En otra: `npm run dev`
+3. Abrir http://localhost:5173 y hacer login con las credenciales de prueba.
+
+## Datos de ejemplo (db.json)
+- 2 usuarios, 2 roles, 3 tipos de documento (CC, PASS, CE).
+- Permisos disponibles:
+  - ver/crear/editar/eliminar usuarios
+  - ver/crear/editar/eliminar roles
+  - ver/crear/editar/eliminar tipos de documento
+
+## Notas
+- El soft delete se maneja con el campo `estado` (true/false).
+- Los formularios validan campos requeridos, email, teléfono (7–10 dígitos), documento (5–20 alfanumérico) y edad mínima de 18 años.
+- El menú solo muestra módulos según los permisos del rol del usuario autenticado.

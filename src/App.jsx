@@ -9,7 +9,7 @@ import { Box } from "@mui/material";
 import { AuthProvider } from "./auth/AuthProvider";
 import PrivateRoute from "./components/PrivateRoute";
 
-// Componente Layout: Envuelve las páginas que llevan Menú
+// Layout para páginas con menú
 function Layout({ children }) {
   return (
     <Box>
@@ -24,10 +24,11 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Ruta Pública: Login (Sin menú) */}
+          {/* Rutas públicas: Login (sin menú) */}
           <Route path="/" element={<Login />} />
+          <Route path="/login" element={<Login />} />
 
-          {/* Rutas Privadas (Con menú) */}
+          {/* Rutas privadas (con menú y protección) */}
           <Route
             path="/home"
             element={
@@ -41,7 +42,7 @@ function App() {
           <Route
             path="/users"
             element={
-              <PrivateRoute>
+              <PrivateRoute requiredPermission="ver_usuarios">
                 <Layout>
                   <Usuarios />
                 </Layout>
@@ -51,7 +52,7 @@ function App() {
           <Route
             path="/roles"
             element={
-              <PrivateRoute>
+              <PrivateRoute requiredPermission="ver_roles">
                 <Layout>
                   <Roles />
                 </Layout>
@@ -61,7 +62,7 @@ function App() {
           <Route
             path="/document-types"
             element={
-              <PrivateRoute>
+              <PrivateRoute requiredPermission="ver_tipos_documento">
                 <Layout>
                   <DocumentTypes />
                 </Layout>

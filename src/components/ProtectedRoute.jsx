@@ -3,10 +3,9 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
 import { Box, CircularProgress } from "@mui/material";
 
-export default function PrivateRoute({ children, requiredPermission }) {
+export default function ProtectedRoute({ children, requiredPermission }) {
   const { isAuthenticated, loading, hasPermission } = useAuth();
 
-  // Show loading spinner while auth state is being determined
   if (loading) {
     return (
       <Box
@@ -24,7 +23,7 @@ export default function PrivateRoute({ children, requiredPermission }) {
 
   // If not authenticated, redirect to login
   if (!isAuthenticated) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // If a specific permission is required, check it

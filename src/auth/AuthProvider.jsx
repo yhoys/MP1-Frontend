@@ -2,31 +2,92 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
 
+const API_URL = "http://localhost:3001";
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     const token = localStorage.getItem("mp1_token");
-    return token ? { name: "user" } : null;
+    const userData = localStorage.getItem("mp1_user");
+    return token && userData ? JSON.parse(userData) : null;
   });
 
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    // keep user in sync with storage (simple)
+    // Keep user in sync with storage
     const onStorage = () => {
       const token = localStorage.getItem("mp1_token");
-      setUser(token ? { name: "user" } : null);
+      const userData = localStorage.getItem("mp1_user");
+      setUser(token && userData ? JSON.parse(userData) : null);
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const login = ({ username } = {}) => {
-    // in real app call backend
-    localStorage.setItem("mp1_token", "demo-token");
-    setUser({ name: username || "user" });
+  const login = async ({ email, password } = {}) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/usuarios`);
+      if (!response.ok) throw new Error("Error fetching usuarios");
+
+      const usuarios = await response.json();
+
+      const foundUser = usuarios.find(
+        (u) => u.email === email && u.password === password && u.estado === true
+      );
+
+      if (!foundUser) {
+        setError("Email o contraseña incorrectos");
+        setLoading(false);
+        return false;
+      }
+
+      // Convertir rolId a número si es string
+      const rolId =
+        typeof foundUser.rolId === "string"
+          ? parseInt(foundUser.rolId)
+          : foundUser.rolId;
+
+      const roleResponse = await fetch(`${API_URL}/roles/${rolId}`);
+      if (!roleResponse.ok) throw new Error("Error fetching role");
+
+      const role = await roleResponse.json();
+
+      const userObj = {
+        id: foundUser.id,
+        nombres: foundUser.nombres,
+        apellidos: foundUser.apellidos,
+        email: foundUser.email,
+        rolId: foundUser.rolId,
+        rolNombre: role.nombre,
+        permisos: role.permisos || [],
+      };
+
+      localStorage.setItem("mp1_token", `token_${foundUser.id}_${Date.now()}`);
+      localStorage.setItem("mp1_user", JSON.stringify(userObj));
+      setUser(userObj);
+      setLoading(false);
+      return true;
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.message || "Error durante el login");
+      setLoading(false);
+      return false;
+    }
   };
 
   const logout = () => {
     localStorage.removeItem("mp1_token");
+    localStorage.removeItem("mp1_user");
     setUser(null);
+    setError(null);
+  };
+
+  const hasPermission = (permission) => {
+    if (!user) return false;
+    return user.permisos?.includes(permission) || false;
   };
 
   const value = {
@@ -34,9 +95,18 @@ export function AuthProvider({ children }) {
     login,
     logout,
     isAuthenticated: !!user,
+    loading,
+    error,
+    hasPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};

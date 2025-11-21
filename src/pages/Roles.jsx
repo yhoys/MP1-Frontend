@@ -19,11 +19,16 @@ import {
   Tabs,
   Tab,
   Alert,
+  Stack,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
+import { PERMISOS } from "../constants/enums";
 
 const API = "http://localhost:3001";
 
@@ -49,9 +54,12 @@ function Roles() {
   const [editingId, setEditingId] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [duplicateData, setDuplicateData] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
+
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
+    permisos: [],
   });
 
   const roles = allRoles.filter((r) => r.estado !== false);
@@ -67,17 +75,43 @@ function Roles() {
   const handleOpenModal = (rol = null) => {
     if (rol) {
       setEditingId(rol.id);
-      setFormData({ nombre: rol.nombre, descripcion: rol.descripcion });
+      setFormData({
+        nombre: rol.nombre,
+        descripcion: rol.descripcion,
+        permisos: rol.permisos || [],
+      });
     } else {
       setEditingId(null);
-      setFormData({ nombre: "", descripcion: "" });
+      setFormData({
+        nombre: "",
+        descripcion: "",
+        permisos: [],
+      });
     }
+    setFormErrors({});
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
     setEditingId(null);
+    setFormErrors({});
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handlePermissionToggle = (permission) => {
+    setFormData((prev) => {
+      const permisos = prev.permisos.includes(permission)
+        ? prev.permisos.filter((p) => p !== permission)
+        : [...prev.permisos, permission];
+      return { ...prev, permisos };
+    });
   };
 
   const checkDuplicate = (nombre) => {
@@ -88,12 +122,14 @@ function Roles() {
   };
 
   const handleSave = async () => {
-    if (!formData.nombre) {
-      alert("El nombre del rol es requerido");
+    const errors = {};
+    if (!formData.nombre?.trim()) errors.nombre = "El nombre es requerido";
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    // Si es crear, verificar duplicados
     if (!editingId) {
       const duplicate = checkDuplicate(formData.nombre);
       if (duplicate) {
@@ -127,8 +163,9 @@ function Roles() {
       setOpenModal(false);
       const res = await fetch(`${API}/roles`);
       setAllRoles(await res.json());
-    } catch {
-      alert("Error al guardar rol");
+    } catch (err) {
+      setFormErrors({ submit: "Error al guardar rol" });
+      console.error(err);
     }
   };
 
@@ -151,13 +188,18 @@ function Roles() {
       setDuplicateData(null);
       const res = await fetch(`${API}/roles`);
       setAllRoles(await res.json());
-    } catch {
-      alert("Error al reactivar rol");
+    } catch (err) {
+      setFormErrors({ submit: "Error al reactivar rol" });
+      console.error(err);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Deseas marcar este rol como inactivo?")) {
+    if (
+      window.confirm(
+        "¿Estás seguro de que deseas marcar este rol como inactivo?"
+      )
+    ) {
       try {
         const rol = roles.find((r) => r.id === id);
         await fetch(`${API}/roles/${id}`, {
@@ -171,14 +213,15 @@ function Roles() {
         });
         const res = await fetch(`${API}/roles`);
         setAllRoles(await res.json());
-      } catch {
+      } catch (err) {
         alert("Error al eliminar rol");
+        console.error(err);
       }
     }
   };
 
   const handleRestoreInactive = async (id) => {
-    if (window.confirm("¿Deseas reactivar este rol?")) {
+    if (window.confirm("¿Estás seguro de que deseas reactivar este rol?")) {
       try {
         const rol = rolesInactivos.find((r) => r.id === id);
         await fetch(`${API}/roles/${id}`, {
@@ -192,8 +235,9 @@ function Roles() {
         });
         const res = await fetch(`${API}/roles`);
         setAllRoles(await res.json());
-      } catch {
+      } catch (err) {
         alert("Error al reactivar rol");
+        console.error(err);
       }
     }
   };
@@ -260,7 +304,7 @@ function Roles() {
                     <strong>Descripción</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Fecha Creación</strong>
+                    <strong>Permisos</strong>
                   </TableCell>
                   <TableCell align="center">
                     <strong>Acciones</strong>
@@ -277,25 +321,23 @@ function Roles() {
                 ) : (
                   roles.map((rol) => (
                     <TableRow key={rol.id} hover>
-                      <TableCell>
-                        <strong>{rol.nombre}</strong>
-                      </TableCell>
+                      <TableCell>{rol.nombre}</TableCell>
                       <TableCell>{rol.descripcion}</TableCell>
-                      <TableCell>
-                        {new Date(rol.createdAt).toLocaleDateString("es-CO")}
-                      </TableCell>
+                      <TableCell>{(rol.permisos || []).length}</TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
                           onClick={() => handleOpenModal(rol)}
+                          title="Editar"
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDelete(rol.id)}
+                          title="Desactivar"
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -338,21 +380,21 @@ function Roles() {
                   </TableRow>
                 ) : (
                   rolesInactivos.map((rol) => (
-                    <TableRow key={rol.id} hover sx={{ opacity: 0.7 }}>
-                      <TableCell>
-                        <strong>{rol.nombre}</strong>
-                      </TableCell>
+                    <TableRow key={rol.id} hover>
+                      <TableCell>{rol.nombre}</TableCell>
                       <TableCell>{rol.descripcion}</TableCell>
                       <TableCell>
-                        {new Date(rol.updatedAt).toLocaleDateString("es-CO")}
+                        {rol.updatedAt
+                          ? new Date(rol.updatedAt).toLocaleDateString()
+                          : "N/A"}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
                           onClick={() => handleRestoreInactive(rol.id)}
-                          title="Reactivar rol"
+                          title="Reactivar"
                         >
-                          <RestoreIcon />
+                          <RestoreIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -362,83 +404,113 @@ function Roles() {
             </Table>
           </TableContainer>
         </TabPanel>
+      </Box>
 
-        {/* Modal crear/editar */}
-        <Dialog
-          open={openModal}
-          onClose={handleCloseModal}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>{editingId ? "Editar Rol" : "Nuevo Rol"}</DialogTitle>
-          <DialogContent
-            sx={{ display: "flex", flexDirection: "column", gap: 2, py: 2 }}
-          >
+      <Dialog
+        open={openModal}
+        onClose={handleCloseModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold" }}>
+          {editingId ? "Editar Rol" : "Nuevo Rol"}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={3} sx={{ pt: 2 }}>
+            {formErrors.submit && (
+              <Alert severity="error">{formErrors.submit}</Alert>
+            )}
+
             <TextField
-              label="Nombre del Rol"
-              value={formData.nombre}
-              onChange={(e) =>
-                setFormData({ ...formData, nombre: e.target.value })
-              }
               fullWidth
-              required
+              label="Nombre"
+              value={formData.nombre}
+              onChange={(e) => handleInputChange("nombre", e.target.value)}
+              error={!!formErrors.nombre}
+              helperText={formErrors.nombre}
+              size="small"
             />
+
             <TextField
+              fullWidth
               label="Descripción"
               value={formData.descripcion}
-              onChange={(e) =>
-                setFormData({ ...formData, descripcion: e.target.value })
-              }
-              fullWidth
+              onChange={(e) => handleInputChange("descripcion", e.target.value)}
+              size="small"
               multiline
-              rows={3}
+              rows={2}
             />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModal}>Cancelar</Button>
-            <Button
-              onClick={handleSave}
-              variant="contained"
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              }}
-            >
-              Guardar
-            </Button>
-          </DialogActions>
-        </Dialog>
 
-        {/* Dialog duplicado */}
-        <Dialog
-          open={openDuplicateDialog}
-          onClose={() => setOpenDuplicateDialog(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>⚠️ Rol Duplicado</DialogTitle>
-          <DialogContent sx={{ pt: 2 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Ya existe un rol con el nombre <strong>{formData.nombre}</strong>{" "}
-              pero está marcado como inactivo.
-            </Alert>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              ¿Deseas reactivarlo con la nueva información o deseas cancelar?
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDuplicateDialog(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleReactivate}
-              variant="contained"
-              color="success"
-            >
-              Reactivar y Actualizar
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+            <Box>
+              <Typography
+                variant="subtitle2"
+                sx={{ mb: 2, fontWeight: "bold" }}
+              >
+                Permisos
+              </Typography>
+              <FormGroup>
+                {PERMISOS.map((permission) => (
+                  <FormControlLabel
+                    key={permission}
+                    control={
+                      <Checkbox
+                        checked={formData.permisos.includes(permission)}
+                        onChange={() => handlePermissionToggle(permission)}
+                      />
+                    }
+                    label={permission.replace(/_/g, " ").toUpperCase()}
+                  />
+                ))}
+              </FormGroup>
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancelar</Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            }}
+          >
+            {editingId ? "Actualizar" : "Crear"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openDuplicateDialog}
+        onClose={() => setOpenDuplicateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#f44336" }}>
+          Rol Inactivo Encontrado
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Ya existe un rol inactivo con el nombre{" "}
+            <strong>{formData.nombre}</strong>.
+          </Alert>
+          <Typography variant="body2">
+            ¿Deseas reactivarlo o crear uno nuevo?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDuplicateDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleReactivate}
+            variant="contained"
+            color="warning"
+            startIcon={<RestoreIcon />}
+          >
+            Reactivar Rol
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

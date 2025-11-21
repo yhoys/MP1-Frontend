@@ -7,20 +7,32 @@ import {
   Menu,
   MenuItem,
   Box,
+  Divider,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthProvider";
+import LogoutIcon from "@mui/icons-material/Logout";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
 function Navigation() {
   const navigate = useNavigate();
-  const auth = useAuth();
-  const [anchorEl, setAnchorEl] = useState(null);
-  const open = Boolean(anchorEl);
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
+  const { user, logout, hasPermission } = useAuth();
+  const [profileAnchorEl, setProfileAnchorEl] = useState(null);
+
+  const profileOpen = Boolean(profileAnchorEl);
+
+  const handleProfileClick = (event) => {
+    setProfileAnchorEl(event.currentTarget);
   };
-  const handleClose = () => {
-    setAnchorEl(null);
+
+  const handleProfileClose = () => {
+    setProfileAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    handleProfileClose();
+    logout();
+    navigate("/login");
   };
 
   return (
@@ -38,61 +50,106 @@ function Navigation() {
         <Typography
           variant="h6"
           component="div"
-          sx={{ mr: 4, cursor: "pointer" }}
+          sx={{ mr: 4, cursor: "pointer", fontWeight: "bold" }}
           onClick={() => navigate("/home")}
         >
-          MICROPROYECTO FRONTEND
+          MICROPROYECTO
         </Typography>
 
-        {/* Buttons Section */}
+        {/* Navigation Buttons */}
         <Box
           sx={{
             flexGrow: 1,
             display: "flex",
             flexWrap: "wrap",
             gap: 1,
-            justifyContent: { xs: "center", sm: "flex-end" },
+            justifyContent: { xs: "center", sm: "flex-start" },
           }}
         >
-          {/* 1. Menú Desplegable "Sistema" */}
-          <Button
-            color="inherit"
-            onClick={handleClick}
-            aria-controls={open ? "basic-menu" : undefined}
-            aria-haspopup="true"
-            aria-expanded={open ? "true" : undefined}
-          >
-            Sistema ▼
-          </Button>
-          <Menu
-            id="basic-menu"
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleClose}
-          >
-            <MenuItem onClick={handleClose}>Opción 1</MenuItem>
-            <MenuItem onClick={handleClose}>Opción 2</MenuItem>
-            <MenuItem
-              onClick={() => {
-                handleClose();
-                auth.logout();
-                navigate("/");
+          {/* Show Usuarios if has permission */}
+          {hasPermission("ver_usuarios") && (
+            <Button
+              color="inherit"
+              onClick={() => navigate("/users")}
+              sx={{
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "4px",
+                },
               }}
             >
+              Usuarios
+            </Button>
+          )}
+
+          {/* Show Roles if has permission */}
+          {hasPermission("ver_roles") && (
+            <Button
+              color="inherit"
+              onClick={() => navigate("/roles")}
+              sx={{
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "4px",
+                },
+              }}
+            >
+              Roles
+            </Button>
+          )}
+
+          {/* Show Tipo Documento if has permission */}
+          {hasPermission("ver_tipos_documento") && (
+            <Button
+              color="inherit"
+              onClick={() => navigate("/document-types")}
+              sx={{
+                "&:hover": {
+                  backgroundColor: "rgba(255, 255, 255, 0.1)",
+                  borderRadius: "4px",
+                },
+              }}
+            >
+              Tipos Documento
+            </Button>
+          )}
+        </Box>
+
+        {/* Profile/User Menu */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{ display: { xs: "none", sm: "block" } }}
+          >
+            {user?.nombres} {user?.apellidos}
+          </Typography>
+
+          <Button
+            color="inherit"
+            onClick={handleProfileClick}
+            startIcon={<AccountCircleIcon />}
+            aria-controls={profileOpen ? "profile-menu" : undefined}
+            aria-haspopup="true"
+            aria-expanded={profileOpen ? "true" : undefined}
+          >
+            {user?.rolNombre}
+          </Button>
+
+          <Menu
+            id="profile-menu"
+            anchorEl={profileAnchorEl}
+            open={profileOpen}
+            onClose={handleProfileClose}
+          >
+            <MenuItem disabled>
+              <Typography variant="caption">{user?.email}</Typography>
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={handleLogout}>
+              <LogoutIcon sx={{ mr: 1 }} />
               Salir
             </MenuItem>
           </Menu>
-
-          {/* 2. Enlaces Directos */}
-          <Button color="inherit" onClick={() => navigate("/document-types")}>
-            Tipo Documento
-          </Button>
-          <Button color="inherit" onClick={() => navigate("/roles")}>
-            Roles
-          </Button>
-          <Button color="inherit" onClick={() => navigate("/users")}>
-            Usuarios
-          </Button>
         </Box>
       </Toolbar>
     </AppBar>

@@ -24,11 +24,14 @@ import {
   Tabs,
   Tab,
   Alert,
+  Stack,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
+import { GENEROS } from "../constants/enums";
+import { validateForm } from "../utils/validators";
 
 const API = "http://localhost:3001";
 
@@ -50,23 +53,27 @@ function TabPanel(props) {
 function Usuarios() {
   const [allUsuarios, setAllUsuarios] = useState([]);
   const [documentTypes, setDocumentTypes] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [openModal, setOpenModal] = useState(false);
   const [openDuplicateDialog, setOpenDuplicateDialog] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [tabValue, setTabValue] = useState(0);
   const [duplicateData, setDuplicateData] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
+
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
-    tipoDocumento: "",
+    tipoDocumentoId: "",
     numeroDocumento: "",
     genero: "",
     email: "",
     telefono: "",
-    rol: "",
+    rolId: "",
     fechaNacimiento: "",
     foto: "",
     direccion: "",
+    password: "",
   });
 
   const usuarios = allUsuarios.filter((u) => u.estado !== false);
@@ -75,48 +82,69 @@ function Usuarios() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, typesRes] = await Promise.all([
+        const [usersRes, typesRes, rolesRes] = await Promise.all([
           fetch(`${API}/usuarios`),
-          fetch(`${API}/documentTypes`),
+          fetch(`${API}/documentTypes?estado=true`),
+          fetch(`${API}/roles?estado=true`),
         ]);
+
         setAllUsuarios((await usersRes.json()) || []);
-        setDocumentTypes(
-          ((await typesRes.json()) || []).filter((d) => d.estado !== false)
-        );
-      } catch {
+        setDocumentTypes((await typesRes.json()) || []);
+        setRoles((await rolesRes.json()) || []);
+      } catch (err) {
+        console.error("Error fetching data:", err);
         setAllUsuarios([]);
         setDocumentTypes([]);
+        setRoles([]);
       }
     };
     fetchData();
   }, []);
 
+  const getDocumentoName = (tipoId) => {
+    return documentTypes.find((d) => d.id === tipoId)?.nombre || "N/A";
+  };
+
+  const getRolName = (rolId) => {
+    return roles.find((r) => r.id === rolId)?.nombre || "N/A";
+  };
+
   const handleOpenModal = (usuario = null) => {
     if (usuario) {
       setEditingId(usuario.id);
-      setFormData(usuario);
+      setFormData({ ...usuario });
     } else {
       setEditingId(null);
       setFormData({
         nombres: "",
         apellidos: "",
-        tipoDocumento: "",
+        tipoDocumentoId: "",
         numeroDocumento: "",
         genero: "",
         email: "",
         telefono: "",
-        rol: "",
+        rolId: "",
         fechaNacimiento: "",
         foto: "",
         direccion: "",
+        password: "",
       });
     }
+    setFormErrors({});
     setOpenModal(true);
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
     setEditingId(null);
+    setFormErrors({});
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (formErrors[field]) {
+      setFormErrors((prev) => ({ ...prev, [field]: "" }));
+    }
   };
 
   const checkDuplicate = (nombres, apellidos) => {
@@ -129,18 +157,27 @@ function Usuarios() {
   };
 
   const handleSave = async () => {
-    if (
-      !formData.nombres ||
-      !formData.apellidos ||
-      !formData.email ||
-      !formData.tipoDocumento ||
-      !formData.numeroDocumento
-    ) {
-      alert("Por favor completa todos los campos requeridos");
+    const requiredFields = [
+      "nombres",
+      "apellidos",
+      "email",
+      "tipoDocumentoId",
+      "numeroDocumento",
+      "genero",
+      "rolId",
+      "telefono",
+      "fechaNacimiento",
+    ];
+
+    if (!editingId) requiredFields.push("password");
+
+    const errors = validateForm(formData, requiredFields);
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    // Si es crear, verificar duplicados
     if (!editingId) {
       const duplicate = checkDuplicate(formData.nombres, formData.apellidos);
       if (duplicate) {
@@ -157,6 +194,10 @@ function Usuarios() {
       updatedAt: new Date().toISOString(),
     };
 
+    if (editingId && !payload.password) {
+      delete payload.password;
+    }
+
     try {
       if (editingId) {
         await fetch(`${API}/usuarios/${editingId}`, {
@@ -171,11 +212,16 @@ function Usuarios() {
           body: JSON.stringify(payload),
         });
       }
-      setOpenModal(false);
+
       const res = await fetch(`${API}/usuarios`);
       setAllUsuarios(await res.json());
+
+      setTimeout(() => {
+        setOpenModal(false);
+        setFormErrors({});
+      }, 500);
     } catch (err) {
-      alert("Error al guardar usuario");
+      setFormErrors({ submit: "Error al guardar usuario" });
       console.error(err);
     }
   };
@@ -189,24 +235,33 @@ function Usuarios() {
         estado: true,
         updatedAt: new Date().toISOString(),
       };
+
+      if (!payload.password) delete payload.password;
+
       await fetch(`${API}/usuarios/${duplicateData.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+
+      const res = await fetch(`${API}/usuarios`);
+      setAllUsuarios(await res.json());
+
       setOpenDuplicateDialog(false);
       setOpenModal(false);
       setDuplicateData(null);
-      const res = await fetch(`${API}/usuarios`);
-      setAllUsuarios(await res.json());
     } catch (err) {
-      alert("Error al reactivar usuario");
+      setFormErrors({ submit: "Error al reactivar usuario" });
       console.error(err);
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("¿Deseas marcar este usuario como inactivo?")) {
+    if (
+      window.confirm(
+        "¿Estás seguro de que deseas marcar este usuario como inactivo?"
+      )
+    ) {
       try {
         const usuario = usuarios.find((u) => u.id === id);
         await fetch(`${API}/usuarios/${id}`, {
@@ -228,7 +283,7 @@ function Usuarios() {
   };
 
   const handleRestoreInactive = async (id) => {
-    if (window.confirm("¿Deseas reactivar este usuario?")) {
+    if (window.confirm("¿Estás seguro de que deseas reactivar este usuario?")) {
       try {
         const usuario = usuariosInactivos.find((u) => u.id === id);
         await fetch(`${API}/usuarios/${id}`, {
@@ -340,25 +395,33 @@ function Usuarios() {
                       <TableCell>{usuario.nombres}</TableCell>
                       <TableCell>{usuario.apellidos}</TableCell>
                       <TableCell>
-                        {usuario.tipoDocumento} - {usuario.numeroDocumento}
+                        {getDocumentoName(usuario.tipoDocumentoId)} -{" "}
+                        {usuario.numeroDocumento}
                       </TableCell>
                       <TableCell>{usuario.email}</TableCell>
                       <TableCell>{usuario.telefono}</TableCell>
                       <TableCell>
-                        <Chip label={usuario.rol || "Sin rol"} size="small" />
+                        <Chip
+                          label={getRolName(usuario.rolId) || "Sin rol"}
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                        />
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
                           onClick={() => handleOpenModal(usuario)}
+                          title="Editar"
                         >
-                          <EditIcon />
+                          <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDelete(usuario.id)}
+                          title="Desactivar"
                         >
-                          <DeleteIcon />
+                          <DeleteIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -385,9 +448,6 @@ function Usuarios() {
                     <strong>Apellidos</strong>
                   </TableCell>
                   <TableCell>
-                    <strong>Documento</strong>
-                  </TableCell>
-                  <TableCell>
                     <strong>Email</strong>
                   </TableCell>
                   <TableCell>
@@ -401,31 +461,28 @@ function Usuarios() {
               <TableBody>
                 {usuariosInactivos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                       No hay usuarios inactivos
                     </TableCell>
                   </TableRow>
                 ) : (
                   usuariosInactivos.map((usuario) => (
-                    <TableRow key={usuario.id} hover sx={{ opacity: 0.7 }}>
+                    <TableRow key={usuario.id} hover>
                       <TableCell>{usuario.nombres}</TableCell>
                       <TableCell>{usuario.apellidos}</TableCell>
-                      <TableCell>
-                        {usuario.tipoDocumento} - {usuario.numeroDocumento}
-                      </TableCell>
                       <TableCell>{usuario.email}</TableCell>
                       <TableCell>
-                        {new Date(usuario.updatedAt).toLocaleDateString(
-                          "es-CO"
-                        )}
+                        {usuario.updatedAt
+                          ? new Date(usuario.updatedAt).toLocaleDateString()
+                          : "N/A"}
                       </TableCell>
                       <TableCell align="center">
                         <IconButton
                           size="small"
                           onClick={() => handleRestoreInactive(usuario.id)}
-                          title="Reactivar usuario"
+                          title="Reactivar"
                         >
-                          <RestoreIcon />
+                          <RestoreIcon fontSize="small" />
                         </IconButton>
                       </TableCell>
                     </TableRow>
@@ -435,185 +492,222 @@ function Usuarios() {
             </Table>
           </TableContainer>
         </TabPanel>
+      </Box>
 
-        {/* Modal crear/editar */}
-        <Dialog
-          open={openModal}
-          onClose={handleCloseModal}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>
-            {editingId ? "Editar Usuario" : "Nuevo Usuario"}
-          </DialogTitle>
-          <DialogContent
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              py: 2,
-              maxHeight: "70vh",
-              overflowY: "auto",
-            }}
-          >
+      <Dialog
+        open={openModal}
+        onClose={handleCloseModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold" }}>
+          {editingId ? "Editar Usuario" : "Nuevo Usuario"}
+        </DialogTitle>
+        <DialogContent>
+          <Stack spacing={2} sx={{ pt: 2 }}>
+            {formErrors.submit && (
+              <Alert severity="error">{formErrors.submit}</Alert>
+            )}
+
             <TextField
+              fullWidth
               label="Nombres"
               value={formData.nombres}
-              onChange={(e) =>
-                setFormData({ ...formData, nombres: e.target.value })
-              }
-              fullWidth
-              required
+              onChange={(e) => handleInputChange("nombres", e.target.value)}
+              error={!!formErrors.nombres}
+              helperText={formErrors.nombres}
+              size="small"
             />
+
             <TextField
+              fullWidth
               label="Apellidos"
               value={formData.apellidos}
-              onChange={(e) =>
-                setFormData({ ...formData, apellidos: e.target.value })
-              }
-              fullWidth
-              required
+              onChange={(e) => handleInputChange("apellidos", e.target.value)}
+              error={!!formErrors.apellidos}
+              helperText={formErrors.apellidos}
+              size="small"
             />
-            <FormControl fullWidth required>
+
+            <FormControl
+              fullWidth
+              size="small"
+              error={!!formErrors.tipoDocumentoId}
+            >
               <InputLabel>Tipo de Documento</InputLabel>
               <Select
+                value={formData.tipoDocumentoId}
                 label="Tipo de Documento"
-                value={formData.tipoDocumento}
                 onChange={(e) =>
-                  setFormData({ ...formData, tipoDocumento: e.target.value })
+                  handleInputChange("tipoDocumentoId", e.target.value)
                 }
               >
-                <MenuItem value="">Seleccionar tipo...</MenuItem>
                 {documentTypes.map((tipo) => (
-                  <MenuItem key={tipo.id} value={tipo.nombre}>
-                    {tipo.nombre} ({tipo.codigo})
+                  <MenuItem key={tipo.id} value={tipo.id}>
+                    {tipo.nombre}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
+
             <TextField
+              fullWidth
               label="Número de Documento"
               value={formData.numeroDocumento}
               onChange={(e) =>
-                setFormData({ ...formData, numeroDocumento: e.target.value })
+                handleInputChange("numeroDocumento", e.target.value)
               }
-              fullWidth
-              required
+              error={!!formErrors.numeroDocumento}
+              helperText={formErrors.numeroDocumento}
+              size="small"
             />
+
+            <FormControl fullWidth size="small" error={!!formErrors.genero}>
+              <InputLabel>Género</InputLabel>
+              <Select
+                value={formData.genero}
+                label="Género"
+                onChange={(e) => handleInputChange("genero", e.target.value)}
+              >
+                {GENEROS.map((g) => (
+                  <MenuItem key={g.value} value={g.value}>
+                    {g.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
             <TextField
-              label="Género"
-              placeholder="Ej: Masculino, Femenino, Otro"
-              value={formData.genero}
-              onChange={(e) =>
-                setFormData({ ...formData, genero: e.target.value })
-              }
               fullWidth
-            />
-            <TextField
               label="Email"
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              fullWidth
-              required
+              onChange={(e) => handleInputChange("email", e.target.value)}
+              error={!!formErrors.email}
+              helperText={formErrors.email}
+              size="small"
             />
+
             <TextField
+              fullWidth
               label="Teléfono"
               value={formData.telefono}
-              onChange={(e) =>
-                setFormData({ ...formData, telefono: e.target.value })
-              }
-              fullWidth
+              onChange={(e) => handleInputChange("telefono", e.target.value)}
+              error={!!formErrors.telefono}
+              helperText={formErrors.telefono}
+              size="small"
             />
+
             <TextField
-              label="Rol"
-              value={formData.rol}
-              onChange={(e) =>
-                setFormData({ ...formData, rol: e.target.value })
-              }
               fullWidth
-            />
-            <TextField
               label="Fecha de Nacimiento"
               type="date"
+              InputLabelProps={{ shrink: true }}
               value={formData.fechaNacimiento}
               onChange={(e) =>
-                setFormData({ ...formData, fechaNacimiento: e.target.value })
+                handleInputChange("fechaNacimiento", e.target.value)
               }
-              fullWidth
-              InputLabelProps={{ shrink: true }}
+              error={!!formErrors.fechaNacimiento}
+              helperText={formErrors.fechaNacimiento}
+              size="small"
             />
-            <TextField
-              label="Dirección"
-              placeholder="Dirección del usuario"
-              value={formData.direccion}
-              onChange={(e) =>
-                setFormData({ ...formData, direccion: e.target.value })
-              }
-              fullWidth
-              multiline
-              rows={2}
-            />
-            <TextField
-              label="URL Foto"
-              placeholder="https://ejemplo.com/foto.jpg"
-              value={formData.foto}
-              onChange={(e) =>
-                setFormData({ ...formData, foto: e.target.value })
-              }
-              fullWidth
-            />
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleCloseModal}>Cancelar</Button>
-            <Button
-              onClick={handleSave}
-              variant="contained"
-              sx={{
-                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              }}
-            >
-              Guardar
-            </Button>
-          </DialogActions>
-        </Dialog>
 
-        {/* Dialog duplicado */}
-        <Dialog
-          open={openDuplicateDialog}
-          onClose={() => setOpenDuplicateDialog(false)}
-          maxWidth="sm"
-          fullWidth
-        >
-          <DialogTitle>⚠️ Usuario Duplicado</DialogTitle>
-          <DialogContent sx={{ pt: 2 }}>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Ya existe un usuario con el nombre{" "}
-              <strong>
-                {formData.nombres} {formData.apellidos}
-              </strong>{" "}
-              pero está marcado como inactivo.
-            </Alert>
-            <Typography variant="body2" sx={{ mb: 2 }}>
-              ¿Deseas reactivarlo con la nueva información o deseas cancelar?
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenDuplicateDialog(false)}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleReactivate}
-              variant="contained"
-              color="success"
-            >
-              Reactivar y Actualizar
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
+            <FormControl fullWidth size="small" error={!!formErrors.rolId}>
+              <InputLabel>Rol</InputLabel>
+              <Select
+                value={formData.rolId}
+                label="Rol"
+                onChange={(e) => handleInputChange("rolId", e.target.value)}
+              >
+                {roles.map((r) => (
+                  <MenuItem key={r.id} value={r.id}>
+                    {r.nombre}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <TextField
+              fullWidth
+              label="Dirección"
+              value={formData.direccion}
+              onChange={(e) => handleInputChange("direccion", e.target.value)}
+              size="small"
+            />
+
+            {!editingId && (
+              <TextField
+                fullWidth
+                label="Contraseña"
+                type="password"
+                value={formData.password}
+                onChange={(e) => handleInputChange("password", e.target.value)}
+                error={!!formErrors.password}
+                helperText={formErrors.password || "Mínimo 6 caracteres"}
+                size="small"
+              />
+            )}
+
+            <TextField
+              fullWidth
+              label="Foto (URL)"
+              value={formData.foto}
+              onChange={(e) => handleInputChange("foto", e.target.value)}
+              placeholder="https://ejemplo.com/foto.jpg"
+              size="small"
+              helperText="Ingresa la URL de la foto (opcional)"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Cancelar</Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            }}
+          >
+            {editingId ? "Actualizar" : "Crear"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={openDuplicateDialog}
+        onClose={() => setOpenDuplicateDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: "bold", color: "#f44336" }}>
+          Usuario Inactivo Encontrado
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Ya existe un usuario inactivo con estos nombres y apellidos.
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 2 }}>
+            <strong>Nombre:</strong> {duplicateData?.nombres}{" "}
+            {duplicateData?.apellidos}
+          </Typography>
+          <Typography variant="body2">
+            <strong>Email:</strong> {duplicateData?.email}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDuplicateDialog(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleReactivate}
+            variant="contained"
+            color="warning"
+            startIcon={<RestoreIcon />}
+          >
+            Reactivar Usuario
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

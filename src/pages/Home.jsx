@@ -42,6 +42,11 @@ function Home() {
     },
   ];
 
+  const welcomeName =
+    user?.nombres && user?.apellidos
+      ? `${user.nombres} ${user.apellidos}`
+      : user?.nombres || "Usuario";
+
   return (
     <Box
       sx={{
@@ -58,7 +63,7 @@ function Home() {
             variant="h4"
             sx={{ fontWeight: "bold", mb: 2, color: "#2c3e50" }}
           >
-            ¡Bienvenido, {user?.name || "Usuario"}!
+            ¡Bienvenido, {welcomeName}!
           </Typography>
           <Typography variant="subtitle1" sx={{ color: "#555" }}>
             Sistema de Gestión de Usuarios - Administración
