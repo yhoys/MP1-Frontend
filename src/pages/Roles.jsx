@@ -29,8 +29,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
 import { PERMISOS } from "../constants/enums";
-
-const API = "http://localhost:3001";
+import { api } from "../utils/api";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -66,8 +65,8 @@ function Roles() {
   const rolesInactivos = allRoles.filter((r) => r.estado === false);
 
   useEffect(() => {
-    fetch(`${API}/roles`)
-      .then((r) => r.json())
+    api
+      .get("/roles")
       .then((data) => setAllRoles(data || []))
       .catch(() => setAllRoles([]));
   }, []);
@@ -148,21 +147,13 @@ function Roles() {
 
     try {
       if (editingId) {
-        await fetch(`${API}/roles/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.put(`/roles/${editingId}`, payload);
       } else {
-        await fetch(`${API}/roles`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.post("/roles", payload);
       }
       setOpenModal(false);
-      const res = await fetch(`${API}/roles`);
-      setAllRoles(await res.json());
+      const data = await api.get("/roles");
+      setAllRoles(data);
     } catch (err) {
       setFormErrors({ submit: "Error al guardar rol" });
       console.error(err);
@@ -178,16 +169,12 @@ function Roles() {
         estado: true,
         updatedAt: new Date().toISOString(),
       };
-      await fetch(`${API}/roles/${duplicateData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await api.put(`/roles/${duplicateData.id}`, payload);
       setOpenDuplicateDialog(false);
       setOpenModal(false);
       setDuplicateData(null);
-      const res = await fetch(`${API}/roles`);
-      setAllRoles(await res.json());
+      const data = await api.get("/roles");
+      setAllRoles(data);
     } catch (err) {
       setFormErrors({ submit: "Error al reactivar rol" });
       console.error(err);
@@ -202,17 +189,13 @@ function Roles() {
     ) {
       try {
         const rol = roles.find((r) => r.id === id);
-        await fetch(`${API}/roles/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...rol,
-            estado: false,
-            updatedAt: new Date().toISOString(),
-          }),
+        await api.put(`/roles/${id}`, {
+          ...rol,
+          estado: false,
+          updatedAt: new Date().toISOString(),
         });
-        const res = await fetch(`${API}/roles`);
-        setAllRoles(await res.json());
+        const data = await api.get("/roles");
+        setAllRoles(data);
       } catch (err) {
         alert("Error al eliminar rol");
         console.error(err);
@@ -224,17 +207,13 @@ function Roles() {
     if (window.confirm("¿Estás seguro de que deseas reactivar este rol?")) {
       try {
         const rol = rolesInactivos.find((r) => r.id === id);
-        await fetch(`${API}/roles/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...rol,
-            estado: true,
-            updatedAt: new Date().toISOString(),
-          }),
+        await api.put(`/roles/${id}`, {
+          ...rol,
+          estado: true,
+          updatedAt: new Date().toISOString(),
         });
-        const res = await fetch(`${API}/roles`);
-        setAllRoles(await res.json());
+        const data = await api.get("/roles");
+        setAllRoles(data);
       } catch (err) {
         alert("Error al reactivar rol");
         console.error(err);

@@ -35,46 +35,34 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${API_URL}/usuarios`);
-      if (!response.ok) throw new Error("Error fetching usuarios");
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-      const usuarios = await response.json();
+      const data = await response.json();
 
-      const foundUser = usuarios.find(
-        (u) => u.email === email && u.password === password && u.estado === true
-      );
-
-      if (!foundUser) {
-        setError("Email o contrasena incorrectos");
+      if (!response.ok) {
+        setError(data.message || "Email o contraseña incorrectos");
         return false;
       }
 
-      const rolId =
-        typeof foundUser.rolId === "string"
-          ? parseInt(foundUser.rolId, 10)
-          : foundUser.rolId;
-
-      if (!Number.isFinite(rolId)) {
-        setError("Rol del usuario invalido");
-        return false;
-      }
-
-      const roleResponse = await fetch(`${API_URL}/roles/${rolId}`);
-      if (!roleResponse.ok) throw new Error("Error fetching role");
-
-      const role = await roleResponse.json();
+      const { token, usuario } = data;
 
       const userObj = {
-        id: foundUser.id,
-        nombres: foundUser.nombres,
-        apellidos: foundUser.apellidos,
-        email: foundUser.email,
-        rolId: rolId,
-        rolNombre: role.nombre,
-        permisos: role.permisos || [],
+        id: usuario.id,
+        nombres: usuario.nombres,
+        apellidos: usuario.apellidos,
+        email: usuario.email,
+        rolId: usuario.rol.id,
+        rolNombre: usuario.rol.nombre,
+        permisos: usuario.rol.permisos || [],
       };
 
-      localStorage.setItem("mp1_token", `token_${foundUser.id}_${Date.now()}`);
+      localStorage.setItem("mp1_token", token);
       localStorage.setItem("mp1_user", JSON.stringify(userObj));
       setUser(userObj);
       return true;

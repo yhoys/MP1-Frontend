@@ -30,8 +30,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
-
-const API = "http://localhost:3001";
+import { api } from "../utils/api";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -65,8 +64,8 @@ function DocumentTypes() {
   const tiposInactivos = allTipos.filter((t) => t.estado === false);
 
   useEffect(() => {
-    fetch(`${API}/documentTypes`)
-      .then((r) => r.json())
+    api
+      .get("/document-types")
       .then((data) => setAllTipos(data || []))
       .catch(() => setAllTipos([]));
   }, []);
@@ -124,22 +123,14 @@ function DocumentTypes() {
 
     try {
       if (editingId) {
-        await fetch(`${API}/documentTypes/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.put(`/document-types/${editingId}`, payload);
       } else {
-        await fetch(`${API}/documentTypes`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.post("/document-types", payload);
       }
 
       setOpenModal(false);
-      const res = await fetch(`${API}/documentTypes`);
-      setAllTipos(await res.json());
+      const data = await api.get("/document-types");
+      setAllTipos(data);
     } catch {
       alert("Error al guardar tipo de documento");
     }
@@ -159,17 +150,13 @@ function DocumentTypes() {
         updatedAt: now,
       };
 
-      await fetch(`${API}/documentTypes/${duplicateData.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await api.put(`/document-types/${duplicateData.id}`, payload);
 
       setOpenDuplicateDialog(false);
       setOpenModal(false);
       setDuplicateData(null);
-      const res = await fetch(`${API}/documentTypes`);
-      setAllTipos(await res.json());
+      const data = await api.get("/document-types");
+      setAllTipos(data);
     } catch {
       alert("Error al reactivar tipo de documento");
     }
@@ -183,21 +170,17 @@ function DocumentTypes() {
         const tipo = tipos.find((t) => t.id === id);
         const now = new Date().toISOString();
 
-        await fetch(`${API}/documentTypes/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...tipo,
-            estado: false,
-            tipoAccion: "delete",
-            usuarioAccion: "Sistema",
-            fechaHoraEvento: now,
-            updatedAt: now,
-          }),
+        await api.put(`/document-types/${id}`, {
+          ...tipo,
+          estado: false,
+          tipoAccion: "delete",
+          usuarioAccion: "Sistema",
+          fechaHoraEvento: now,
+          updatedAt: now,
         });
 
-        const res = await fetch(`${API}/documentTypes`);
-        setAllTipos(await res.json());
+        const data = await api.get("/document-types");
+        setAllTipos(data);
       } catch {
         alert("Error al eliminar tipo de documento");
       }
@@ -210,21 +193,17 @@ function DocumentTypes() {
         const tipo = tiposInactivos.find((t) => t.id === id);
         const now = new Date().toISOString();
 
-        await fetch(`${API}/documentTypes/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...tipo,
-            estado: true,
-            tipoAccion: "reactivate",
-            usuarioAccion: "Sistema",
-            fechaHoraEvento: now,
-            updatedAt: now,
-          }),
+        await api.put(`/document-types/${id}`, {
+          ...tipo,
+          estado: true,
+          tipoAccion: "reactivate",
+          usuarioAccion: "Sistema",
+          fechaHoraEvento: now,
+          updatedAt: now,
         });
 
-        const res = await fetch(`${API}/documentTypes`);
-        setAllTipos(await res.json());
+        const data = await api.get("/document-types");
+        setAllTipos(data);
       } catch {
         alert("Error al reactivar tipo de documento");
       }

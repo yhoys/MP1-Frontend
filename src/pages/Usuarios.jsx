@@ -32,8 +32,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RestoreIcon from "@mui/icons-material/Restore";
 import { GENEROS } from "../constants/enums";
 import { validateForm } from "../utils/validators";
-
-const API = "http://localhost:3001";
+import { api } from "../utils/api";
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -82,15 +81,15 @@ function Usuarios() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [usersRes, typesRes, rolesRes] = await Promise.all([
-          fetch(`${API}/usuarios`),
-          fetch(`${API}/documentTypes?estado=true`),
-          fetch(`${API}/roles?estado=true`),
+        const [usuarios, documentTypes, roles] = await Promise.all([
+          api.get("/usuarios"),
+          api.get("/document-types?estado=true"),
+          api.get("/roles?estado=true"),
         ]);
 
-        setAllUsuarios((await usersRes.json()) || []);
-        setDocumentTypes((await typesRes.json()) || []);
-        setRoles((await rolesRes.json()) || []);
+        setAllUsuarios(usuarios.usuarios || usuarios || []);
+        setDocumentTypes(documentTypes || []);
+        setRoles(roles || []);
       } catch (err) {
         console.error("Error fetching data:", err);
         setAllUsuarios([]);
@@ -190,8 +189,6 @@ function Usuarios() {
     const payload = {
       ...formData,
       estado: true,
-      createdAt: editingId ? undefined : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     if (editingId && !payload.password) {
@@ -200,28 +197,20 @@ function Usuarios() {
 
     try {
       if (editingId) {
-        await fetch(`${API}/usuarios/${editingId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.put(`/usuarios/${editingId}`, payload);
       } else {
-        await fetch(`${API}/usuarios`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        await api.post("/usuarios", payload);
       }
 
-      const res = await fetch(`${API}/usuarios`);
-      setAllUsuarios(await res.json());
+      const data = await api.get("/usuarios");
+      setAllUsuarios(data.usuarios || data || []);
 
       setTimeout(() => {
         setOpenModal(false);
         setFormErrors({});
       }, 500);
     } catch (err) {
-      setFormErrors({ submit: "Error al guardar usuario" });
+      setFormErrors({ submit: err.message || "Error al guardar usuario" });
       console.error(err);
     }
   };
@@ -263,20 +252,11 @@ function Usuarios() {
       )
     ) {
       try {
-        const usuario = usuarios.find((u) => u.id === id);
-        await fetch(`${API}/usuarios/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...usuario,
-            estado: false,
-            updatedAt: new Date().toISOString(),
-          }),
-        });
-        const res = await fetch(`${API}/usuarios`);
-        setAllUsuarios(await res.json());
+        await api.delete(`/usuarios/${id}`);
+        const data = await api.get("/usuarios");
+        setAllUsuarios(data.usuarios || data || []);
       } catch (err) {
-        alert("Error al eliminar usuario");
+        alert(err.message || "Error al eliminar usuario");
         console.error(err);
       }
     }
@@ -286,19 +266,15 @@ function Usuarios() {
     if (window.confirm("¿Estás seguro de que deseas reactivar este usuario?")) {
       try {
         const usuario = usuariosInactivos.find((u) => u.id === id);
-        await fetch(`${API}/usuarios/${id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...usuario,
-            estado: true,
-            updatedAt: new Date().toISOString(),
-          }),
+        await api.put(`/usuarios/${id}`, {
+          ...usuario,
+          estado: true,
         });
-        const res = await fetch(`${API}/usuarios`);
-        setAllUsuarios(await res.json());
+
+        const data = await api.get("/usuarios");
+        setAllUsuarios(data.usuarios || data || []);
       } catch (err) {
-        alert("Error al reactivar usuario");
+        alert(err.message || "Error al reactivar usuario");
         console.error(err);
       }
     }
